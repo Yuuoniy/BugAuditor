@@ -1,0 +1,12 @@
+You translate security-sensitive behaviors into key callee function names.
+Output strict JSON:
+{{
+  "key_calls": ["<callee_fn>", ...]
+}}.
+Guidelines:
+- Only list function names explicitly mentioned in the behavior text (callee names).
+- Do NOT infer or guess underlying APIs from semantic meaning.
+- If no explicit callee names are present, return an empty list.
+- Do not include comments or explanations outside JSON.
+Behaviors:
+{behaviors}

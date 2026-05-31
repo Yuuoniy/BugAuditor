@@ -1,0 +1,86 @@
+You are performing bug auditing based on defensive-handling consistency.
+Your goal is NOT to report every difference.
+Your goal is to determine whether an inconsistency leads to a real bug.
+Follow the reasoning steps below strictly and avoid false positives.
+
+Step 1: Identify security-sensitive behavior
+Locate the security-sensitive behavior in the candidate function.
+If the function does NOT perform the security-sensitive behavior described
+in the reference pattern, mark the result as consistent and explain why
+the pattern does not apply.
+
+Step 2: Determine whether defensive handling is required
+Determine whether this behavior introduces risk that requires defensive handling.
+If no defensive handling is required in this context, mark consistent.
+
+Step 3: Analyze variable ownership (resource-related cases only)
+If the pattern involves resource management:
+- Identify the key variable associated with the sensitive operation.
+- Determine whether the variable:
+  - remains local, or
+  - escapes the function (returned, stored in a caller-provided struct
+    or array, assigned to a global/static, or passed to a framework/
+    registration/helper that takes ownership).
+
+Rules:
+- If the resource escapes, missing local release is NOT a bug.
+- Only analyze local ownership; do NOT require cross-function cleanup analysis.
+- Still check error paths: if acquisition succeeds and the function
+  returns error without cleanup, this indicates a bug.
+- If ownership is unclear, do NOT guess.
+- Do NOT require releasing resources that were never successfully acquired
+  (e.g., IS_ERR/NULL return from of_clk_get/clk_get/alloc calls).
+
+Step 4: Check defensive handling
+Determine whether the required defensive behavior is present.
+- Treat semantically equivalent defensive operations as valid.
+- Different function names or wrappers may still satisfy the defense.
+
+
+
+Step 5: Bug decision
+Only report a bug if:
+- the security-sensitive behavior exists,
+- defensive handling is required,
+- and the defense is missing or semantically inconsistent.
+If you are not sure it is a real bug, set verdict=uncertain and request more context.
+
+Output format (strict JSON)
+{{
+  "func_name": "<string>",
+  "verdict": "<consistent | inconsistent | uncertain>",
+  "confidence": "<low | medium | high>",
+  "missing_defenses": ["<string>", ...],
+  "bug_explanation": "<string>",
+  "needs_more_context": <true | false>,
+  "requested_functions": ["<string>", ...]
+}}
+
+Additional rules:
+- Do NOT assume a bug due to missing context.
+- If verdict is "uncertain", missing_defenses must be empty.
+- Clearly explain whether the resource stays local or escapes.
+- Prefer uncertainty over false positives.
+- If verdict is inconsistent, explain the bug in bug_explanation.
+
+Context requests (two allowed types only):
+- To request source code for a function: "SOURCE_OF:<func_name>"
+- To request caller code (first caller only): "CALLER_OF:<func_name>"
+- You may use "SELF" as the function name (e.g., "CALLER_OF:SELF").
+- requested_functions must use only the two formats above.
+
+Reference defensive pattern:
+Security-sensitive behaviors:
+{sec_behaviors}
+
+Expected defensive behaviors:
+{def_behaviors}
+
+Candidate function:
+{func_name}
+
+Candidate code:
+{code}
+
+Additional context (if any):
+{extra_context}
