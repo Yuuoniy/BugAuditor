@@ -1,41 +1,279 @@
+# BugAuditor Artifact Evaluation
+This document provides the steps to evaluate **BugAuditor**. The artifact evaluation (AE) focuses on two core parts:
 
-## BugAuditor‘s Components
+1. **Minimal Functional Example**
+A small example using `clk_put` as the seed defensive operation. It demonstrates the full workflow in two stages:
+- **Stage 1**: Locate defensive code and infer defensive patterns using the LLM.
+- **Stage 2**: Use the mined patterns to perform bug auditing on comparable functions.
 
-### Main Pipeline Scripts
+This part is lightweight and suitable for quick functional verification.
 
-| Component                      | Purpose                                                                                                                                                   | Output                                                    |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `secop_extend.py`              | Expands a seed security operation into related security operations.                                                                                       | `output/secop_data/<repo>_<seed>_extend_<iterations>.txt` |
-| `run_pipeline.py`              | Controls the full BugAuditor pipeline. It runs defensive-code locating, pattern reasoning, and specification merging.                                     | Outputs under `output/vuln_data/<repo>/`                  |
-| `defensivecodelocate.py`       | Defines `DefensiveCodeLocator`. It uses Weggli to locate defensive-code contexts and filters the results.                                                 | `contexts/<secop>.json`                                   |
-| `vuln_op_reasoner.py`          | Defines `VulnOpReasoner` and `VulnOpReasonerRunner`. It reasons about defensive patterns and generates raw results, detailed results, and specifications. | `raw/`, `detail/`, `spec/`                                |
-| `run_vuln_reasoner.py`         | Runs Stage 2 directly. It supports dominator analysis, LLM reporting, cached outputs, concurrency, and timeout control.                                   | `llm_inputs/`, `llm_reports/`, `raw/`, `detail/`, `spec/` |
-| `defensive_pattern_auditor.py` | Audits generated defensive patterns and performs bug detection with LLM support.                                                                          | `output/vuln_data/<repo>/audit/*.json`                    |
+1. **Reproduced Reduced-Scale Evaluation**
+A scaled-down reproduction of the main experiments from the paper, covering two stages:
+- **Defensive Pattern Reasoning**: Infer defensive patterns from Linux kernel code using six seed defensive operations.
+- **Bug Auditing**: Audit known missing-defense cases using the inferred patterns.
 
+
+The full paper-scale experiments are computationally expensive (large-scale AST queries, Joern analysis, and many LLM calls). Therefore, the AE provides reduced-scale versions that preserve the core workflow, data, and results.
+The reduced-scale versions keep the overall LLM costs very low (a few dollars).
+
+We also provide additional extension experiments (defensive operation extensibility and cross-project generalizability on OpenSSL/FFmpeg). These demonstrate broader capabilities of BugAuditor but are not required for the core artifact evaluation.
+
+## Outline
+- [BugAuditor Artifact Evaluation](#bugauditor-artifact-evaluation)
+  - [Outline](#outline)
+  - [Setup](#setup)
+  - [Minimal Functional Example](#minimal-functional-example)
+    - [Step 1: Locate Code and Reason Patterns](#step-1-locate-code-and-reason-patterns)
+    - [Step 2: Bug Auditing](#step-2-bug-auditing)
+  - [Reproduced Reduced-Scale Evaluation](#reproduced-reduced-scale-evaluation)
+    - [Defensive Pattern Reasoning](#defensive-pattern-reasoning)
+    - [Bug Auditing](#bug-auditing)
+  - [Extension Experiments](#extension-experiments)
+    - [1. Extensibility analysis.](#1-extensibility-analysis)
+    - [2. Generalizability Study](#2-generalizability-study)
+  - [Data for Paper Tables and Figures](#data-for-paper-tables-and-figures)
+
+
+## Setup
+
+Follow [INSTALL.md](INSTALL.md) to build the Docker image, prepare `source/linux`, and set the LLM endpoint in `config.json`.
+
+
+## Minimal Functional Example
+
+This example uses `clk_put` as the seed defensive operation. It runs two commands with default settings: 10 examples for pattern reasoning, a fixed 10-function comparable sample for bug auditing, and 8 workers.
+
+### Step 1: Locate Code and Reason Patterns
+
+**Intro.** This step locates Linux code snippets that use the seed defensive operation `clk_put`, selects 10 defensive code snippets, and performs defensive pattern reasoning for a quick functional test.
+
+**Execution.**
 
 ```bash
-run_pipeline.py
-├── Stage 1: DefensiveCodeLocator (defensivecodelocate.py)
-│   └── Weggli query -> filtering -> write contexts/<secop>.json
-│
-└── Stage 2: VulnOpReasonerRunner (vuln_op_reasoner.py)
-    ├── read contexts/<secop>.json
-    ├── VulnOpReasoner (per function)
-    │   └── SecOpDominateAnalyzer
-    │       └── BuildFuncCFG / CFGAnalyzer
-    └── output raw / detail / spec -> combine -> spec_all
+bash artifact/minimal/run_pattern_reasoning.sh
 ```
 
 
-### Auxiliary Scripts and Utilities
+**Output.** 
 
-| Component                          | Purpose                                                                                | Notes                                             |
-| ---------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `secop_domination.py`              | Defines `SecOpDominateAnalyzer` for CFG-based domination analysis.                     | Used by `VulnOpReasoner`.                         |
-| `src/utils/BuildFuncCFG.py`        | Integrates Joern to build function-level CFGs.                                         | Requires Joern.                                   |
-| `src/utils/CFGAnalyzer.py`         | Provides CFG analysis utilities.                                                       | Used during domination analysis.                  |
-| `scripts/utils/openai_client.py`   | Handles LLM API calls.                                                                 | Reads LLM configuration from YAML.                |
-| `scripts/utils/openai_config.yaml` | Stores LLM API configuration.                                                          | Can be created from `openai_config.example.yaml`. |
-| `config.json`                      | Stores paths, tool locations, model settings, iteration depth, and blacklist settings. | Main configuration file.                          |
-| `config.example.json`              | Template configuration file.                                                           | Copy to `config.json` and edit local paths.       |
+The key outputs in `artifact/results/minimal/` are:
 
+| File Name                          | Description                        |
+| ---------------------------------- | ---------------------------------- |
+| `defensive_code_snippets.json`     | Collected defensive code snippets. |
+| `inferred_defensive_patterns.json` | Inferred defensive patterns.       |
+
+
+The file `defensive_code_snippets.json` records detailed information for each defensive code snippet. An example entry is shown below:
+
+```json
+{
+    "function": "{func_code}",
+    "func_name": "berlin2q_clock_setup",
+    "var": "clk",
+    "defensive_op": "clk_put",
+    ...
+}
+```
+The file `inferred_defensive_patterns.json` contains the corresponding inferred defensive patterns. An example entry is shown below:
+```json
+{
+    "func_name": "berlin2q_clock_setup",
+     ...
+    "llm_output": {
+        "security_sensitive_behaviors": "When of_clk_get_by_name acquires a clock reference for clk, it creates a reference leak risk because the clock reference must be released after use to avoid resource exhaustion.",
+        "defensive_behaviors": "The clk_put is executed after ...",
+        "analysis": "...",
+    }
+}
+```
+
+
+**Execution Time.** 
+
+```text
+bash artifact/minimal/run_pattern_reasoning.sh  7.54s user 2.91s system 62% cpu 16.638 total
+```
+**Reference Execution Output.**
+```bash
+bash artifact/minimal/run_pattern_reasoning.sh --reference
+```
+
+The `--reference` flag copies the packaged reference outputs to `artifact/results/minimal/`, enabling you to check the results without real execution.
+
+### Step 2: Bug Auditing
+
+**Intro.** This step audits comparable functions using one mined pattern from Step 1. The pattern is derived from the source function `berlin2q_clock_setup`, which contains the security-sensitive operation `of_clk_get_by_name` and the corresponding defensive operation `clk_put`.
+
+The script automatically generates a weggli query to locate similar functions and then audits a fixed sample of 10 functions. It detects buggy functions such as `lpc32xx_clk_init` and `nmdk_timer_of_init`.
+
+**Execution.**
+
+```bash
+bash artifact/minimal/run_bug_auditing.sh
+```
+
+**Input.** The pattern is read from `artifact/results/minimal/inferred_defensive_patterns.json`.
+
+**Output.** The key results are written to `artifact/results/minimal/`:
+
+| File                        | Description                                            |
+| --------------------------- | ------------------------------------------------------ |
+| `bug_auditing_results.csv`  | LLM verdicts for the sampled functions.                |
+| `bug_auditing_clk_put.json` | Full live-run LLM audit output.                        |
+| `bug_reports_clk_put.json`  | Generated bug reports with vulnerability explanations. |
+
+Reference versions of the compact result files are in `artifact/minimal/reference/`. For example, the corresponding entry in `bug_reports_clk_put.json` explains why `lpc32xx_clk_init` is reported:
+```json
+{
+    "buggy_function": "lpc32xx_clk_init",
+    "buggy_function_path": "drivers/clk/nxp/clk-lpc32xx.c",
+    "pattern_source_func": "berlin2q_clock_setup",
+    "security_sensitive_operation": "of_clk_get_by_name",
+    ...
+    "bug_explanation": "The function acquires clock references via of_clk_get_by_name for clk_32k and clk_osc. On subsequent error paths (invalid rate for clk_32k, missing base, regmap failure), the function returns without releasing these acquired clock references, causing a resource leak. .."
+},
+```
+**Execution Time.**
+
+```text
+bash artifact/minimal/run_bug_auditing.sh  8.44s user 2.29s system 103% cpu 10.406 total
+```
+**Reference Execution Output.**
+```bash
+bash artifact/minimal/run_bug_auditing.sh --reference
+```
+
+The `--reference` command copies the packaged 10-function reference result without real execution.
+
+## Reproduced Reduced-Scale Evaluation
+
+### Defensive Pattern Reasoning
+
+**Intro.** This stage reproduces the defensive pattern reasoning process on the six seed defensive operations: `kfree`, `of_node_put`, `clk_put`, `null-ptr-check`, `negative-check`, and `err-ptr-check`.
+For easier evaluation, the default run collects up to 200 defensive-code examples per seed for pattern reasoning.
+
+**Run.**
+
+```bash
+bash artifact/r_pattern_reasoning/run.sh
+```
+
+The default settings are already in the script: up to 200 code snippets per seed and 8 workers. You can override them with two optional arguments:
+
+```bash
+bash artifact/r_pattern_reasoning/run.sh <per_seed_sample_size> <workers>
+```
+
+**Result.** The main results are written to the directory **`artifact/results/r_pattern_reasoning/`**.
+
+Packaged reference files with the same names are provided in **`artifact/r_pattern_reasoning/reference/`** for comparison:
+
+| File Name                       | Description                                                       |
+| ------------------------------- | ----------------------------------------------------------------- |
+| `defensive_code_samples.csv`    | Defensive-code examples selected for each seed.                   |
+| `inferred_patterns.csv`         | Reference inferred defensive patterns for the selected examples.  |
+| `pattern_reasoning_summary.csv` | Per-seed counts of selected defensive code and inferred patterns. |
+
+To facilitate result checking, this run prioritizes the collection of defensive code related to the top security-sensitive operations listed in Table 18. 
+By running this script, you can verify whether the inferred patterns cover these important cases. This demonstrates that BugAuditor can effectively mine diverse defensive patterns.
+
+To quickly check whether the inferred patterns cover the top security-sensitive operations from Table 18, please run:
+```bash
+# Due to the inherent instability of LLMs, you may expect near 100% coverage (or very minor variations) across different runs.
+python3 artifact/r_pattern_reasoning/check_table18_coverage.py
+```
+
+
+
+**Expected cost.** Based on our testing, the default sample is estimated at **1.366M total tokens**, and **1,107.862 seconds** of LLM time.
+The overall script runtime is 39 mins. The actual runtime depends on the machine (especially the number of CPU cores).
+
+**Reference Execution Output.**
+For a quick packaged-output check:
+
+```bash
+bash artifact/r_pattern_reasoning/run.sh --reference
+```
+
+### Bug Auditing
+
+**Intro.** To facilitate testing, we provide a set of pre-inferred defensive patterns related to bug detection. These patterns were either directly derived from the seed defensive operations or from their corresponding wrappers.
+The benchmark includes 20 bug candidates for validation. We only provide a subset of detected bugs as some bugs are still being processed. 
+
+
+**Input files:**
+- `defensive_patterns.csv` — a compact set of pre-obtained defensive patterns
+- Corresponding `.parsed.json` pattern files
+
+**Run.**
+```bash
+bash artifact/r_bug_auditing/run.sh
+```
+
+The default settings are already in the script: audit up to 10 comparable functions per pattern and use 8 workers. You can override them with two optional arguments, `<per_pattern_audit_limit> <workers>`. The per-pattern limit must be at least 10.
+The results should detect most known bugs in the benchmark, with minor variation possible because the audit uses an LLM.
+
+
+**Result.** The results are saved in the `artifact/results/r_bug_auditing/` directory. The key outputs are:
+
+| File                       | Description                                     |
+| -------------------------- | ----------------------------------------------- |
+| `bug_reports.json`         | Bug reports for provided cases.                 |
+| `bug_auditing_results.csv` | Overall audit verdicts for selected candidates. |
+
+Example report: 
+```json
+  "items": [
+    {
+      "case_id": "P01",
+      "buggy_function": "ksmbd_crypt_message",
+      ...
+      "bug_explanation": "The function calls aead_request_alloc() to allocate a request, but on error paths (e.g., when ksmbd_init_sg fails or kzalloc fails) it uses kfree(req) instead of aead_request_free(req). This is a resource leak because aead_request_alloc returns a structure that must be freed with aead_request_free, not kfree. ..."
+    },
+```
+
+
+
+**Execution time.** A few mins and token cost.
+
+## Extension Experiments
+
+### 1. Extensibility analysis.
+
+**Intro.** This experiment corresponds to the paper's Section 7.1 extensibility analysis. Given function-call seed defensive operations such as `kfree`, `of_node_put`, `clk_put`, and `kref_put`, BugAuditor extends them to wrapper defensive operations, then mines defensive patterns for those extended operations. 
+
+**Execution.**
+
+```bash
+bash artifact/defensive_op_extension/run.sh
+```
+
+**Results.** The command writes the Table 11 reference data and compact extension summaries to `artifact/results/defensive_op_extension/`. The expected Table 11 total is 7,943 wrapper defensive operations and 735 inferred patterns.
+
+### 2. Generalizability Study
+
+**Intro.** This experiment provides the compact reference results for applying BugAuditor's defensive-pattern reasoning to OpenSSL and FFmpeg.
+
+**Execution.**
+
+```bash
+bash artifact/cross_project/run.sh
+```
+
+**Results.** The command copies the packaged Table 16 reference files to `artifact/results/cross_project/`.
+
+## Data for Paper Tables and Figures
+
+**Intro.** The directory `artifact/paper_tables/` contains compact source data and scripts needed to support selected paper results. 
+One can **run the scripts on the provided source data** to automatically regenerate main tables and figure. The key input files are located under `artifact/paper_tables/data/`:
+
+
+**Execution.**
+
+```bash
+bash artifact/paper_tables/run.sh
+```
+
+**Results.** The command prints Table 9 and Table 11 and writes generated markdown/LaTeX tables plus `figure8_long_tail.svg` to `artifact/results/paper_tables/`. Reference generated outputs are in `artifact/paper_tables/reference/`.
