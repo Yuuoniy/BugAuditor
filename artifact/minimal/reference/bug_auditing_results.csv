@@ -1,0 +1,11 @@
+sample_index,function,verdict,reported_issue,missing_defenses
+0,orion_mdio_xsmi_set_mdc_freq,consistent,no,
+1,mtk_hdmi_get_all_clk,consistent,no,
+2,mxc_timer_init_dt,inconsistent,yes,clk_put
+3,lpc32xx_clk_init,inconsistent,yes,clk_put
+4,brcm_usb_phy_dvr_init,inconsistent,yes,clk_put
+5,pistachio_clksrc_of_init,inconsistent,yes,clk_put
+6,nmdk_timer_of_init,inconsistent,yes,clk_put
+7,st_i2c_probe,inconsistent,yes,clk_put
+8,ingenic_register_clock,consistent,no,
+9,load_one_timing_from_dt,consistent,no,

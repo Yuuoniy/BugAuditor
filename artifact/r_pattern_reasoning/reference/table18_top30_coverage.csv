@@ -1,0 +1,8 @@
+seed_defensive_op,covered_top_operations,top_operations,coverage,missing_operations
+kfree,30,30,30/30,
+of_node_put,30,30,30/30,
+clk_put,8,8,8/8,
+null-ptr-check,28,30,28/30,kmemdup;kasprintf
+negative-check,30,30,30/30,
+err-ptr-check,30,30,30/30,
+TOTAL,156,158,156/158,

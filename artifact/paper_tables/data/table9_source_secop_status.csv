@@ -1,0 +1,9 @@
+secop,usage_located,collected_functions,spec_patterns
+null-ptr-check,62240,27344,6175
+kfree,27749,11921,922
+of_node_put,2224,1664,113
+clk_put,359,181,12
+negative-check,20086,16114,7013
+memset,10585,3248,1196
+err-ptr-check,10878,5208,2288
+TOTAL(no memset),123536,62432,16523

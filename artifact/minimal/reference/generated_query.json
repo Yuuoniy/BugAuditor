@@ -1,0 +1,13 @@
+{
+  "pattern_name": "clk_put:berlin2q_clock_setup",
+  "reference_func": "berlin2q_clock_setup",
+  "reference_defensive_op": "clk_put",
+  "key_calls": [
+    "of_clk_get_by_name"
+  ],
+  "queries": [
+    "_ $func(_){of_clk_get_by_name(_);}"
+  ],
+  "query": "_ $func(_){of_clk_get_by_name(_);}",
+  "query_match": true
+}

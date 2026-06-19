@@ -1,0 +1,1 @@
+"""BugAuditor script package."""

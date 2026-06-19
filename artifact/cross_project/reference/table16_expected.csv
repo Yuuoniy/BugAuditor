@@ -1,0 +1,7 @@
+program,operation,usage_located,collected_functions,spec_patterns,sample_accuracy
+OpenSSL,NULL pointer check,1559,764,258,
+OpenSSL,OPENSSL_free,1363,924,124,
+OpenSSL,TOTAL,2922,1688,382,95%
+FFmpeg,NULL pointer check,3038,2330,276,
+FFmpeg,av_free,744,553,95,
+FFmpeg,TOTAL,3782,2883,371,88%

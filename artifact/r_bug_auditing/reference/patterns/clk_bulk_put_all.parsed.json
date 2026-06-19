@@ -1,0 +1,29 @@
+[
+  {
+    "func_name": "dwc3_of_simple_probe",
+    "var": "simple->num_clocks",
+    "model": "DeepSeek-V3.2",
+    "llm_output": {
+      "security_sensitive_behaviors": "When clk_bulk_get_all acquires clock resources for simple->clks, it creates resource leak risk because failure to release clocks would prevent proper system resource management.",
+      "defensive_behaviors": "The clk_bulk_put_all is executed in error paths after clk_bulk_prepare_enable failure to prevent resource leaks by releasing all acquired clock resources.",
+      "analysis": "When clk_bulk_get_all acquires clock resources for simple->clks, it creates resource leak risk because failure to release clocks would prevent proper system resource management.",
+      "critical_calls": null
+    },
+    "llm_input": {
+      "var_statements": [
+        {
+          "func": "clk_bulk_prepare_enable",
+          "stmt": "ret = clk_bulk_prepare_enable(simple->num_clocks, simple->clks);"
+        },
+        {
+          "func": "clk_bulk_put_all",
+          "stmt": "clk_bulk_put_all(simple->num_clocks, simple->clks);"
+        }
+      ],
+      "code_slice": "static int dwc3_of_simple_probe(struct platform_device *pdev)\n{\n\tstruct dwc3_of_simple\t*simple;\n\tstruct device\t\t*dev = &pdev->dev;\n\tstruct device_node\t*np = dev->of_node;\n\n\tint\t\t\tret;\n\n\tsimple = devm_kzalloc(dev, sizeof(*simple), GFP_KERNEL);\n\tif (!simple)\n\t\treturn -ENOMEM;\n\n\tplatform_set_drvdata(pdev, simple);\n\tsimple->dev = dev;\n\n\t/*\n\t * Some controllers need to toggle the usb3-otg reset before trying to\n\t * initialize the PHY, otherwise the PHY times out.\n\t */\n\tif (of_device_is_compatible(np, \"rockchip,rk3399-dwc3\"))\n\t\tsimple->need_reset = true;\n\n\tsimple->resets = of_reset_control_array_get_optional_exclusive(np);\n\tif (IS_ERR(simple->resets)) {\n\t\tret = PTR_ERR(simple->resets);\n\t\tdev_err(dev, \"failed to get device resets, err=%d\\n\", ret);\n\t\treturn ret;\n\t}\n\n\tret = reset_control_deassert(simple->resets);\n\tif (ret)\n\t\tgoto err_resetc_put;\n\n\tret = clk_bulk_get_all(simple->dev, &simple->clks);\n\tif (ret < 0)\n\t\tgoto err_resetc_assert;\n\n\tsimple->num_clocks = ret;\n\tret = clk_bulk_prepare_enable(simple->num_clocks, simple->clks);\n\tif (ret)\n\t\tgoto err_clk_put_all;\n\n\tret = of_platform_populate(np, NULL, NULL, dev);\n\tif (ret)\n\t\tgoto err_clk_disable;\n\n\tpm_runtime_set_active(dev);\n\tpm_runtime_enable(dev);\n\tpm_runtime_get_sync(dev);\n\n\treturn 0;\n\nerr_clk_disable:\n\tclk_bulk_disable_unprepare(simple->num_clocks, simple->clks);\nerr_clk_put_all:\n\tclk_bulk_put_all(simple->num_clocks, simple->clks);",
+      "function": "static int dwc3_of_simple_probe(struct platform_device *pdev)\n{\n\tstruct dwc3_of_simple\t*simple;\n\tstruct device\t\t*dev = &pdev->dev;\n\tstruct device_node\t*np = dev->of_node;\n\n\tint\t\t\tret;\n\n\tsimple = devm_kzalloc(dev, sizeof(*simple), GFP_KERNEL);\n\tif (!simple)\n\t\treturn -ENOMEM;\n\n\tplatform_set_drvdata(pdev, simple);\n\tsimple->dev = dev;\n\n\t/*\n\t * Some controllers need to toggle the usb3-otg reset before trying to\n\t * initialize the PHY, otherwise the PHY times out.\n\t */\n\tif (of_device_is_compatible(np, \"rockchip,rk3399-dwc3\"))\n\t\tsimple->need_reset = true;\n\n\tsimple->resets = of_reset_control_array_get_optional_exclusive(np);\n\tif (IS_ERR(simple->resets)) {\n\t\tret = PTR_ERR(simple->resets);\n\t\tdev_err(dev, \"failed to get device resets, err=%d\\n\", ret);\n\t\treturn ret;\n\t}\n\n\tret = reset_control_deassert(simple->resets);\n\tif (ret)\n\t\tgoto err_resetc_put;\n\n\tret = clk_bulk_get_all(simple->dev, &simple->clks);\n\tif (ret < 0)\n\t\tgoto err_resetc_assert;\n\n\tsimple->num_clocks = ret;\n\tret = clk_bulk_prepare_enable(simple->num_clocks, simple->clks);\n\tif (ret)\n\t\tgoto err_clk_put_all;\n\n\tret = of_platform_populate(np, NULL, NULL, dev);\n\tif (ret)\n\t\tgoto err_clk_disable;\n\n\tpm_runtime_set_active(dev);\n\tpm_runtime_enable(dev);\n\tpm_runtime_get_sync(dev);\n\n\treturn 0;\n\nerr_clk_disable:\n\tclk_bulk_disable_unprepare(simple->num_clocks, simple->clks);\nerr_clk_put_all:\n\tclk_bulk_put_all(simple->num_clocks, simple->clks);\n\nerr_resetc_assert:\n\treset_control_assert(simple->resets);\n\nerr_resetc_put:\n\treset_control_put(simple->resets);\n\treturn ret;\n}",
+      "var_origin": "local",
+      "var_origin_reason": "member_assigned_locally"
+    }
+  }
+]

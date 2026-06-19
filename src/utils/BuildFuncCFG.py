@@ -17,7 +17,10 @@ class BuildFuncCFG:
         self.func_name = func_name
         self.func_code = self._clean_func_code(func_code)
         # get the joern data path from the repo-level config.json
-        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'config.json')
+        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        config_path = os.path.join(repo_root, 'config.json')
+        if not os.path.exists(config_path):
+            config_path = os.path.join(repo_root, 'configs', 'config.json')
         with open(config_path, "r") as f:
             config = json.load(f)
         self.joern_data_path = config["joern_data_path"]

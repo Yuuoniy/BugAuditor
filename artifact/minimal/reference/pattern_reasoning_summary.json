@@ -1,0 +1,20 @@
+{
+  "seed_defensive_op": "clk_put",
+  "raw_usages_located": 370,
+  "valid_defensive_code_snippets": 264,
+  "reasoning_sample_size": 10,
+  "input_for_defensive_pattern_reasoning": 9,
+  "inferred_defensive_patterns": 9,
+  "workers": 8,
+  "paper_table9_reference": {
+    "raw_usages": 359,
+    "collected_functions": 181,
+    "inferred_defensive_patterns": 8
+  },
+  "published_files": {
+    "defensive_code_snippets": "artifact/results/minimal/defensive_code_snippets.json",
+    "input_for_defensive_pattern_reasoning": "artifact/results/minimal/input_for_defensive_pattern_reasoning.json",
+    "inferred_defensive_patterns": "artifact/results/minimal/inferred_defensive_patterns.json"
+  },
+  "internal_cache_note": "The minimal AE script publishes reviewer-facing files under artifact/results/minimal and removes transient clk_put cache files."
+}

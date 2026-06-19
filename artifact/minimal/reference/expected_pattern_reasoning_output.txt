@@ -1,0 +1,7 @@
+[ae] minimal clk_put defensive pattern reasoning
+[ae] raw usages located: 370
+[ae] valid defensive-code snippets: 264 -> artifact/results/minimal/defensive_code_snippets.json
+[ae] reasoning inputs: 9 -> artifact/results/minimal/input_for_defensive_pattern_reasoning.json
+[ae] inferred defensive patterns: 9 -> artifact/results/minimal/inferred_defensive_patterns.json
+[ae] summary: artifact/results/minimal/pattern_reasoning_summary.json
+[ae] logs: artifact/results/minimal/logs/

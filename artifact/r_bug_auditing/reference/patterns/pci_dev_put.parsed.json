@@ -1,0 +1,53 @@
+[
+  {
+    "func_name": "cavium_ptp_get",
+    "var": "",
+    "model": "reference",
+    "llm_output": {
+      "security_sensitive_behaviors": "When pci_get_device is called, missing paired cleanup or checking can lead to a leak, invalid pointer use, or inconsistent error handling.",
+      "defensive_behaviors": "pci_dev_put is expected on the relevant cleanup/error path or before unsafe use.",
+      "analysis": "When pci_get_device is called, missing paired cleanup or checking can lead to a leak, invalid pointer use, or inconsistent error handling.",
+      "critical_calls": [
+        "pci_get_device"
+      ]
+    },
+    "llm_input": {
+      "function": "",
+      "code_slice": ""
+    }
+  },
+  {
+    "func_name": "nforce2_fsb_read",
+    "var": "",
+    "model": "reference",
+    "llm_output": {
+      "security_sensitive_behaviors": "When pci_get_subsys is called, missing paired cleanup or checking can lead to a leak, invalid pointer use, or inconsistent error handling.",
+      "defensive_behaviors": "pci_dev_put is expected on the relevant cleanup/error path or before unsafe use.",
+      "analysis": "When pci_get_subsys is called, missing paired cleanup or checking can lead to a leak, invalid pointer use, or inconsistent error handling.",
+      "critical_calls": [
+        "pci_get_subsys"
+      ]
+    },
+    "llm_input": {
+      "function": "",
+      "code_slice": ""
+    }
+  },
+  {
+    "func_name": "agp_serverworks_probe",
+    "var": "",
+    "model": "reference",
+    "llm_output": {
+      "security_sensitive_behaviors": "When pci_get_domain_bus_and_slot is called, missing paired cleanup or checking can lead to a leak, invalid pointer use, or inconsistent error handling.",
+      "defensive_behaviors": "pci_dev_put is expected on the relevant cleanup/error path or before unsafe use.",
+      "analysis": "When pci_get_domain_bus_and_slot is called, missing paired cleanup or checking can lead to a leak, invalid pointer use, or inconsistent error handling.",
+      "critical_calls": [
+        "pci_get_domain_bus_and_slot"
+      ]
+    },
+    "llm_input": {
+      "function": "",
+      "code_slice": ""
+    }
+  }
+]

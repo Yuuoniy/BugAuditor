@@ -8,18 +8,41 @@ import pdb
 LOG_FUNC = ['mtk_v4l2_err','dev_err','dev_err_probe','pr_debug']
 
 
-def tree_sitter_init():
-    Language.build_library(
-        # Store the library in the `build` directory
-        "build/my-languages.so",
-        # Include one or more languages
-        [os.environ.get("TREE_SITTER_C_DIR", "path/to/tree-sitter-c")],
-    )
+class LazyCParser:
+    def __init__(self):
+        self._parser = None
 
-    C_LANGUAGE = Language("build/my-languages.so", "c")
-    parser = Parser()
-    parser.set_language(C_LANGUAGE)
-    return parser
+    def _init_parser(self):
+        grammar_dir = os.environ.get("TREE_SITTER_C_DIR")
+        if not grammar_dir:
+            raise RuntimeError(
+                "TREE_SITTER_C_DIR must point to a local tree-sitter-c checkout for live parsing"
+            )
+        parser_c = os.path.join(grammar_dir, "src", "parser.c")
+        if not os.path.exists(parser_c):
+            raise RuntimeError(
+                f"TREE_SITTER_C_DIR is invalid: expected {parser_c}"
+            )
+
+        build_dir = os.environ.get("TREE_SITTER_BUILD_DIR", os.path.join(os.path.dirname(__file__), "build"))
+        os.makedirs(build_dir, exist_ok=True)
+        language_so = os.path.join(build_dir, "my-languages.so")
+        Language.build_library(language_so, [grammar_dir])
+
+        c_language = Language(language_so, "c")
+        parser = Parser()
+        parser.set_language(c_language)
+        self._parser = parser
+        return parser
+
+    def parse(self, *args, **kwargs):
+        if self._parser is None:
+            self._init_parser()
+        return self._parser.parse(*args, **kwargs)
+
+
+def tree_sitter_init():
+    return LazyCParser()
 
 parser = tree_sitter_init()
 

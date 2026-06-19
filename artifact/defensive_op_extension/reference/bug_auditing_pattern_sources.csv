@@ -1,0 +1,3 @@
+pattern_family,source,reference,bug_auditing_role
+initial_seed_patterns,Table 9 six seed defensive operations,artifact/r_pattern_reasoning/reference/inferred_patterns.csv,audit candidates covered by patterns mined from the original seed operations
+extended_wrapper_patterns,Extension Experiment 1 / Table 11,artifact/defensive_op_extension/reference/table11_paper_expected.csv and extension_inferred_patterns_sample.csv,audit candidates covered by patterns mined from wrapper defensive operations discovered from function-call seeds

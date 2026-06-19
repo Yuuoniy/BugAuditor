@@ -1,0 +1,8 @@
+of_clk_get_by_name
+clk_hw_get_clk
+of_clk_get
+clk_get
+of_clk_get_from_provider
+clk_get_sys
+clk_get_optional
+clk_get_parent

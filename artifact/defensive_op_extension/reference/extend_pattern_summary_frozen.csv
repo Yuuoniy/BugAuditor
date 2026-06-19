@@ -1,0 +1,4 @@
+seed_defensive_op,extend_patterns_file,patterns_status,pattern_rows,unique_pattern_pairs,non_na_rows,non_na_unique_pairs,expanded_manifest,context_status,expanded_defensive_ops,context_files_exist,context_files_missing
+kfree,packaged compact pattern summary,present,3141,16,2985,15,packaged expanded-operation manifest,present,6302,3393,2909
+clk_put,,missing,0,0,0,0,packaged expanded-operation manifest,present,32,20,12
+of_node_put,,missing,0,0,0,0,packaged expanded-operation manifest,present,29,12,17

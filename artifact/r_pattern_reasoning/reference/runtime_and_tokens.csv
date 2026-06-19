@@ -1,0 +1,8 @@
+seed_defensive_op,selected_defensive_code,reference_patterns_available,estimated_prompt_tokens,estimated_completion_tokens,estimated_total_tokens,estimated_llm_seconds,token_source,runtime_source
+kfree,200,922,235551,15533,251084,112.0,output/secop_stats/pattern_token_stats.csv,output/runtime_logs/*_deepseek_v3_2.time.txt
+of_node_put,200,113,208434,16802,225235,64.508,output/secop_stats/pattern_token_stats.csv,output/runtime_logs/*_deepseek_v3_2.time.txt
+clk_put,200,12,202200,15500,217700,596.967,output/secop_stats/pattern_token_stats.csv,output/runtime_logs/*_deepseek_v3_2.time.txt
+null-ptr-check,200,6172,203456,16995,220450,115.112,output/secop_stats/pattern_token_stats.csv,output/runtime_logs/*_deepseek_v3_2.time.txt
+negative-check,200,7010,209846,16627,226473,107.897,output/secop_stats/pattern_token_stats.csv,output/runtime_logs/*_deepseek_v3_2.time.txt
+err-ptr-check,200,2288,207593,17878,225471,111.378,output/secop_stats/pattern_token_stats.csv,output/runtime_logs/*_deepseek_v3_2.time.txt
+TOTAL,1200,16517,1267080,99335,1366413,1107.862,output/secop_stats/pattern_token_stats.csv,output/runtime_logs/*_deepseek_v3_2.time.txt

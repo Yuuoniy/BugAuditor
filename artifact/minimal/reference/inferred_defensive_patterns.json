@@ -1,0 +1,281 @@
+[
+  {
+    "func_name": "plat_time_init",
+    "var": "clk",
+    "model": "deepseek-v4-flash",
+    "llm_output": {
+      "security_sensitive_behaviors": "When of_clk_get acquires a clock reference for clk, it creates a resource leak risk because the clock reference must be released to avoid exhausting clock resources.",
+      "defensive_behaviors": "The clk_put is executed at the end of the function after using clk to prevent resource leak by releasing the clock reference before function exit.",
+      "analysis": "When of_clk_get acquires a clock reference for clk, it creates a resource leak risk because the clock reference must be released to avoid exhausting clock resources.",
+      "critical_calls": null
+    },
+    "llm_input": {
+      "var_statements": [
+        {
+          "func": "of_clk_get",
+          "stmt": "clk = of_clk_get(np, 0);"
+        },
+        {
+          "func": "clk_put",
+          "stmt": "clk_put(clk);"
+        }
+      ],
+      "code_slice": "void __init plat_time_init(void)\n{\n\tstruct device_node *np;\n\tstruct clk *clk;\n\tunsigned long cpu_clk_rate;\n\n\tof_clk_init(NULL);\n\n\tnp = of_get_cpu_node(0, NULL);\n\tif (!np) {\n\t\tpr_err(\"Failed to get CPU node\\n\");\n\t\treturn;\n\t}\n\n\tclk = of_clk_get(np, 0);\n\tif (IS_ERR(clk)) {\n\t\tpr_err(\"Failed to get CPU clock: %ld\\n\", PTR_ERR(clk));\n\t\treturn;\n\t}\n\n\tcpu_clk_rate = clk_get_rate(clk);\n\n\tpr_info(\"CPU clock: %lu.%03lu MHz\\n\",\n\t\tcpu_clk_rate / 1000000, (cpu_clk_rate / 1000) % 1000);\n\n\tmips_hpt_frequency = cpu_clk_rate / 2;\n\n\tclk_put(clk);",
+      "function": "void __init plat_time_init(void)\n{\n\tstruct device_node *np;\n\tstruct clk *clk;\n\tunsigned long cpu_clk_rate;\n\n\tof_clk_init(NULL);\n\n\tnp = of_get_cpu_node(0, NULL);\n\tif (!np) {\n\t\tpr_err(\"Failed to get CPU node\\n\");\n\t\treturn;\n\t}\n\n\tclk = of_clk_get(np, 0);\n\tif (IS_ERR(clk)) {\n\t\tpr_err(\"Failed to get CPU clock: %ld\\n\", PTR_ERR(clk));\n\t\treturn;\n\t}\n\n\tcpu_clk_rate = clk_get_rate(clk);\n\n\tpr_info(\"CPU clock: %lu.%03lu MHz\\n\",\n\t\tcpu_clk_rate / 1000000, (cpu_clk_rate / 1000) % 1000);\n\n\tmips_hpt_frequency = cpu_clk_rate / 2;\n\n\tclk_put(clk);\n}",
+      "var_origin": "local",
+      "var_origin_reason": "local_assignment"
+    }
+  },
+  {
+    "func_name": "spear6xx_timer_init",
+    "var": "gpt_clk",
+    "model": "deepseek-v4-flash",
+    "llm_output": {
+      "security_sensitive_behaviors": "When clk_get_sys allocates gpt_clk, it creates a reference count increment risk because the clock reference must be released after use to avoid resource leak.",
+      "defensive_behaviors": "The clk_put is executed after clk_set_parent to prevent clock reference leak by decrementing the reference count of gpt_clk.",
+      "analysis": "When clk_get_sys allocates gpt_clk, it creates a reference count increment risk because the clock reference must be released after use to avoid resource leak.",
+      "critical_calls": null
+    },
+    "llm_input": {
+      "var_statements": [
+        {
+          "func": "clk_get_sys",
+          "stmt": "gpt_clk = clk_get_sys(\"gpt0\", NULL);"
+        },
+        {
+          "func": "clk_set_parent",
+          "stmt": "clk_set_parent(gpt_clk, pclk);"
+        },
+        {
+          "func": "clk_put",
+          "stmt": "clk_put(gpt_clk);"
+        }
+      ],
+      "code_slice": "static void __init spear6xx_timer_init(void)\n{\n\tchar pclk_name[] = \"pll3_clk\";\n\tstruct clk *gpt_clk, *pclk;\n\n\tspear6xx_clk_init(MISC_BASE);\n\n\t/* get the system timer clock */\n\tgpt_clk = clk_get_sys(\"gpt0\", NULL);\n\tif (IS_ERR(gpt_clk)) {\n\t\tpr_err(\"%s:couldn't get clk for gpt\\n\", __func__);\n\t\tBUG();\n\t}\n\n\t/* get the suitable parent clock for timer*/\n\tpclk = clk_get(NULL, pclk_name);\n\tif (IS_ERR(pclk)) {\n\t\tpr_err(\"%s:couldn't get %s as parent for gpt\\n\",\n\t\t\t\t__func__, pclk_name);\n\t\tBUG();\n\t}\n\n\tclk_set_parent(gpt_clk, pclk);\n\tclk_put(gpt_clk);",
+      "function": "static void __init spear6xx_timer_init(void)\n{\n\tchar pclk_name[] = \"pll3_clk\";\n\tstruct clk *gpt_clk, *pclk;\n\n\tspear6xx_clk_init(MISC_BASE);\n\n\t/* get the system timer clock */\n\tgpt_clk = clk_get_sys(\"gpt0\", NULL);\n\tif (IS_ERR(gpt_clk)) {\n\t\tpr_err(\"%s:couldn't get clk for gpt\\n\", __func__);\n\t\tBUG();\n\t}\n\n\t/* get the suitable parent clock for timer*/\n\tpclk = clk_get(NULL, pclk_name);\n\tif (IS_ERR(pclk)) {\n\t\tpr_err(\"%s:couldn't get %s as parent for gpt\\n\",\n\t\t\t\t__func__, pclk_name);\n\t\tBUG();\n\t}\n\n\tclk_set_parent(gpt_clk, pclk);\n\tclk_put(gpt_clk);\n\tclk_put(pclk);\n\n\tspear_setup_of_timer();\n}",
+      "var_origin": "local",
+      "var_origin_reason": "local_assignment"
+    }
+  },
+  {
+    "func_name": "jz4740_pwm_request",
+    "var": "clk",
+    "model": "deepseek-v4-flash",
+    "llm_output": {
+      "security_sensitive_behaviors": "When clk_get allocates a clock reference for clk, it creates a resource leak risk because failure to release the reference leads to resource exhaustion.",
+      "defensive_behaviors": "The clk_put is executed in the error path after clk_prepare_enable fails to prevent resource leaks by releasing the clock reference before function exit.",
+      "analysis": "When clk_get allocates a clock reference for clk, it creates a resource leak risk because failure to release the reference leads to resource exhaustion.",
+      "critical_calls": null
+    },
+    "llm_input": {
+      "var_statements": [
+        {
+          "func": "clk_get",
+          "stmt": "clk = clk_get(pwmchip_parent(chip), name);"
+        },
+        {
+          "func": "clk_prepare_enable",
+          "stmt": "err = clk_prepare_enable(clk);"
+        },
+        {
+          "func": "clk_put",
+          "stmt": "clk_put(clk);"
+        }
+      ],
+      "code_slice": "static int jz4740_pwm_request(struct pwm_chip *chip, struct pwm_device *pwm)\n{\n\tstruct jz4740_pwm_chip *jz = to_jz4740(chip);\n\tstruct clk *clk;\n\tchar name[16];\n\tint err;\n\n\tif (!jz4740_pwm_can_use_chn(chip, pwm->hwpwm))\n\t\treturn -EBUSY;\n\n\tsnprintf(name, sizeof(name), \"timer%u\", pwm->hwpwm);\n\n\tclk = clk_get(pwmchip_parent(chip), name);\n\tif (IS_ERR(clk)) {\n\t\tdev_err(pwmchip_parent(chip),\n\t\t\t\"error %pe: Failed to get clock\\n\", clk);\n\t\treturn PTR_ERR(clk);\n\t}\n\n\terr = clk_prepare_enable(clk);\n\tif (err < 0) {\n\t\tclk_put(clk);",
+      "function": "static int jz4740_pwm_request(struct pwm_chip *chip, struct pwm_device *pwm)\n{\n\tstruct jz4740_pwm_chip *jz = to_jz4740(chip);\n\tstruct clk *clk;\n\tchar name[16];\n\tint err;\n\n\tif (!jz4740_pwm_can_use_chn(chip, pwm->hwpwm))\n\t\treturn -EBUSY;\n\n\tsnprintf(name, sizeof(name), \"timer%u\", pwm->hwpwm);\n\n\tclk = clk_get(pwmchip_parent(chip), name);\n\tif (IS_ERR(clk)) {\n\t\tdev_err(pwmchip_parent(chip),\n\t\t\t\"error %pe: Failed to get clock\\n\", clk);\n\t\treturn PTR_ERR(clk);\n\t}\n\n\terr = clk_prepare_enable(clk);\n\tif (err < 0) {\n\t\tclk_put(clk);\n\t\treturn err;\n\t}\n\n\tjz->clk[pwm->hwpwm] = clk;\n\n\treturn 0;\n}",
+      "var_origin": "local",
+      "var_origin_reason": "local_assignment"
+    }
+  },
+  {
+    "func_name": "spear_setup_of_timer",
+    "var": "gpt_clk",
+    "model": "deepseek-v4-flash",
+    "llm_output": {
+      "security_sensitive_behaviors": "When clk_get_sys obtains gpt_clk, it creates a clock reference leak risk because the reference must be released to avoid resource exhaustion.",
+      "defensive_behaviors": "The clk_put is executed in the err_prepare_enable_clk error path to prevent clock reference leak by releasing gpt_clk when clk_prepare_enable fails.",
+      "analysis": "When clk_get_sys obtains gpt_clk, it creates a clock reference leak risk because the reference must be released to avoid resource exhaustion.",
+      "critical_calls": null
+    },
+    "llm_input": {
+      "var_statements": [
+        {
+          "func": "clk_get_sys",
+          "stmt": "gpt_clk = clk_get_sys(\"gpt0\", NULL);"
+        },
+        {
+          "func": "clk_prepare_enable",
+          "stmt": "ret = clk_prepare_enable(gpt_clk);"
+        },
+        {
+          "func": "clk_put",
+          "stmt": "clk_put(gpt_clk);"
+        }
+      ],
+      "code_slice": "void __init spear_setup_of_timer(void)\n{\n\tstruct device_node *np;\n\tint irq, ret;\n\n\tnp = of_find_matching_node(NULL, timer_of_match);\n\tif (!np) {\n\t\tpr_err(\"%s: No timer passed via DT\\n\", __func__);\n\t\treturn;\n\t}\n\n\tirq = irq_of_parse_and_map(np, 0);\n\tif (!irq) {\n\t\tpr_err(\"%s: No irq passed for timer via DT\\n\", __func__);\n\t\tgoto err_put_np;\n\t}\n\n\tgpt_base = of_iomap(np, 0);\n\tif (!gpt_base) {\n\t\tpr_err(\"%s: of iomap failed\\n\", __func__);\n\t\tgoto err_put_np;\n\t}\n\n\tgpt_clk = clk_get_sys(\"gpt0\", NULL);\n\tif (IS_ERR(gpt_clk)) {\n\t\tpr_err(\"%s:couldn't get clk for gpt\\n\", __func__);\n\t\tgoto err_iomap;\n\t}\n\n\tret = clk_prepare_enable(gpt_clk);\n\tif (ret < 0) {\n\t\tpr_err(\"%s:couldn't prepare-enable gpt clock\\n\", __func__);\n\t\tgoto err_prepare_enable_clk;\n\t}\n\n\tof_node_put(np);\n\n\tspear_clockevent_init(irq);\n\tspear_clocksource_init();\n\n\treturn;\n\nerr_prepare_enable_clk:\n\tclk_put(gpt_clk);",
+      "function": "void __init spear_setup_of_timer(void)\n{\n\tstruct device_node *np;\n\tint irq, ret;\n\n\tnp = of_find_matching_node(NULL, timer_of_match);\n\tif (!np) {\n\t\tpr_err(\"%s: No timer passed via DT\\n\", __func__);\n\t\treturn;\n\t}\n\n\tirq = irq_of_parse_and_map(np, 0);\n\tif (!irq) {\n\t\tpr_err(\"%s: No irq passed for timer via DT\\n\", __func__);\n\t\tgoto err_put_np;\n\t}\n\n\tgpt_base = of_iomap(np, 0);\n\tif (!gpt_base) {\n\t\tpr_err(\"%s: of iomap failed\\n\", __func__);\n\t\tgoto err_put_np;\n\t}\n\n\tgpt_clk = clk_get_sys(\"gpt0\", NULL);\n\tif (IS_ERR(gpt_clk)) {\n\t\tpr_err(\"%s:couldn't get clk for gpt\\n\", __func__);\n\t\tgoto err_iomap;\n\t}\n\n\tret = clk_prepare_enable(gpt_clk);\n\tif (ret < 0) {\n\t\tpr_err(\"%s:couldn't prepare-enable gpt clock\\n\", __func__);\n\t\tgoto err_prepare_enable_clk;\n\t}\n\n\tof_node_put(np);\n\n\tspear_clockevent_init(irq);\n\tspear_clocksource_init();\n\n\treturn;\n\nerr_prepare_enable_clk:\n\tclk_put(gpt_clk);\nerr_iomap:\n\tiounmap(gpt_base);\nerr_put_np:\n\tof_node_put(np);\n}",
+      "var_origin": "unknown",
+      "var_origin_reason": "no_local_declaration"
+    }
+  },
+  {
+    "func_name": "rzg2l_cpg_attach_dev",
+    "var": "clk",
+    "model": "deepseek-v4-flash",
+    "llm_output": {
+      "security_sensitive_behaviors": "When of_clk_get_from_provider obtains clk, it creates a reference leak risk because the clock reference must be released after use.",
+      "defensive_behaviors": "The clk_put is executed in the fail_put error path to prevent clock reference leaks by releasing clk before pm_clk_destroy and function exit.",
+      "analysis": "When of_clk_get_from_provider obtains clk, it creates a reference leak risk because the clock reference must be released after use.",
+      "critical_calls": null
+    },
+    "llm_input": {
+      "var_statements": [
+        {
+          "func": "of_clk_get_from_provider",
+          "stmt": "clk = of_clk_get_from_provider(&clkspec);"
+        },
+        {
+          "func": "pm_clk_add_clk",
+          "stmt": "error = pm_clk_add_clk(dev, clk);"
+        },
+        {
+          "func": "clk_put",
+          "stmt": "clk_put(clk);"
+        }
+      ],
+      "code_slice": "static int rzg2l_cpg_attach_dev(struct generic_pm_domain *domain, struct device *dev)\n{\n\tstruct rzg2l_cpg_pd *pd = container_of(domain, struct rzg2l_cpg_pd, genpd);\n\tstruct rzg2l_cpg_priv *priv = pd->priv;\n\tstruct device_node *np = dev->of_node;\n\tstruct of_phandle_args clkspec;\n\tbool once = true;\n\tstruct clk *clk;\n\tint error;\n\tint i = 0;\n\n\twhile (!of_parse_phandle_with_args(np, \"clocks\", \"#clock-cells\", i,\n\t\t\t\t\t   &clkspec)) {\n\t\tif (rzg2l_cpg_is_pm_clk(priv, &clkspec)) {\n\t\t\tif (once) {\n\t\t\t\tonce = false;\n\t\t\t\terror = pm_clk_create(dev);\n\t\t\t\tif (error) {\n\t\t\t\t\tof_node_put(clkspec.np);\n\t\t\t\t\tgoto err;\n\t\t\t\t}\n\t\t\t}\n\t\t\tclk = of_clk_get_from_provider(&clkspec);\n\t\t\tof_node_put(clkspec.np);\n\t\t\tif (IS_ERR(clk)) {\n\t\t\t\terror = PTR_ERR(clk);\n\t\t\t\tgoto fail_destroy;\n\t\t\t}\n\n\t\t\terror = pm_clk_add_clk(dev, clk);\n\t\t\tif (error) {\n\t\t\t\tdev_err(dev, \"pm_clk_add_clk failed %d\\n\",\n\t\t\t\t\terror);\n\t\t\t\tgoto fail_put;\n\t\t\t}\n\t\t} else {\n\t\t\tof_node_put(clkspec.np);\n\t\t}\n\t\ti++;\n\t}\n\n\treturn 0;\n\nfail_put:\n\tclk_put(clk);",
+      "function": "static int rzg2l_cpg_attach_dev(struct generic_pm_domain *domain, struct device *dev)\n{\n\tstruct rzg2l_cpg_pd *pd = container_of(domain, struct rzg2l_cpg_pd, genpd);\n\tstruct rzg2l_cpg_priv *priv = pd->priv;\n\tstruct device_node *np = dev->of_node;\n\tstruct of_phandle_args clkspec;\n\tbool once = true;\n\tstruct clk *clk;\n\tint error;\n\tint i = 0;\n\n\twhile (!of_parse_phandle_with_args(np, \"clocks\", \"#clock-cells\", i,\n\t\t\t\t\t   &clkspec)) {\n\t\tif (rzg2l_cpg_is_pm_clk(priv, &clkspec)) {\n\t\t\tif (once) {\n\t\t\t\tonce = false;\n\t\t\t\terror = pm_clk_create(dev);\n\t\t\t\tif (error) {\n\t\t\t\t\tof_node_put(clkspec.np);\n\t\t\t\t\tgoto err;\n\t\t\t\t}\n\t\t\t}\n\t\t\tclk = of_clk_get_from_provider(&clkspec);\n\t\t\tof_node_put(clkspec.np);\n\t\t\tif (IS_ERR(clk)) {\n\t\t\t\terror = PTR_ERR(clk);\n\t\t\t\tgoto fail_destroy;\n\t\t\t}\n\n\t\t\terror = pm_clk_add_clk(dev, clk);\n\t\t\tif (error) {\n\t\t\t\tdev_err(dev, \"pm_clk_add_clk failed %d\\n\",\n\t\t\t\t\terror);\n\t\t\t\tgoto fail_put;\n\t\t\t}\n\t\t} else {\n\t\t\tof_node_put(clkspec.np);\n\t\t}\n\t\ti++;\n\t}\n\n\treturn 0;\n\nfail_put:\n\tclk_put(clk);\n\nfail_destroy:\n\tpm_clk_destroy(dev);\nerr:\n\treturn error;\n}",
+      "var_origin": "local",
+      "var_origin_reason": "local_assignment"
+    }
+  },
+  {
+    "func_name": "propagate_rate",
+    "var": "clkp",
+    "model": "deepseek-v4-flash",
+    "llm_output": {
+      "security_sensitive_behaviors": "When clk_get_sys allocates a clock reference for clkp, it creates a reference leak risk because the reference must be released to avoid resource exhaustion.",
+      "defensive_behaviors": "The clk_put is executed after clk_get_rate to prevent clock reference leaks by releasing the clkp reference obtained from clk_get_sys.",
+      "analysis": "When clk_get_sys allocates a clock reference for clkp, it creates a reference leak risk because the reference must be released to avoid resource exhaustion.",
+      "critical_calls": null
+    },
+    "llm_input": {
+      "var_statements": [
+        {
+          "func": "clk_get_sys",
+          "stmt": "clkp = clk_get_sys(NULL, clk_hw_get_name(&tclk->hw));"
+        },
+        {
+          "func": "clk_get_rate",
+          "stmt": "clk_get_rate(clkp);"
+        },
+        {
+          "func": "clk_put",
+          "stmt": "clk_put(clkp);"
+        }
+      ],
+      "code_slice": "void propagate_rate(struct omap1_clk *tclk)\n{\n\tstruct clk *clkp;\n\n\t/* depend on CCF ability to recalculate new rates across whole clock subtree */\n\tif (WARN_ON(!(clk_hw_get_flags(&tclk->hw) & CLK_GET_RATE_NOCACHE)))\n\t\treturn;\n\n\tclkp = clk_get_sys(NULL, clk_hw_get_name(&tclk->hw));\n\tif (WARN_ON(!clkp))\n\t\treturn;\n\n\tclk_get_rate(clkp);\n\tclk_put(clkp);",
+      "function": "void propagate_rate(struct omap1_clk *tclk)\n{\n\tstruct clk *clkp;\n\n\t/* depend on CCF ability to recalculate new rates across whole clock subtree */\n\tif (WARN_ON(!(clk_hw_get_flags(&tclk->hw) & CLK_GET_RATE_NOCACHE)))\n\t\treturn;\n\n\tclkp = clk_get_sys(NULL, clk_hw_get_name(&tclk->hw));\n\tif (WARN_ON(!clkp))\n\t\treturn;\n\n\tclk_get_rate(clkp);\n\tclk_put(clkp);\n}",
+      "var_origin": "local",
+      "var_origin_reason": "local_assignment"
+    }
+  },
+  {
+    "func_name": "davinci_psc_genpd_attach_dev",
+    "var": "clk",
+    "model": "deepseek-v4-flash",
+    "llm_output": {
+      "security_sensitive_behaviors": "When clk_get_sys obtains a clock reference for clk, it creates a reference leak risk because the reference must be released to avoid resource exhaustion.",
+      "defensive_behaviors": "The clk_put is executed in error paths after clk_get_sys succeeds but before successful completion, to prevent clock reference leaks by releasing the acquired reference.",
+      "analysis": "When clk_get_sys obtains a clock reference for clk, it creates a reference leak risk because the reference must be released to avoid resource exhaustion.",
+      "critical_calls": null
+    },
+    "llm_input": {
+      "var_statements": [
+        {
+          "func": "clk_get_sys",
+          "stmt": "clk = clk_get_sys(best_dev_name(lpsc->dev), clk_hw_get_name(&lpsc->hw));"
+        },
+        {
+          "func": "pm_clk_add_clk",
+          "stmt": "ret = pm_clk_add_clk(dev, clk);"
+        },
+        {
+          "func": "clk_put",
+          "stmt": "clk_put(clk);"
+        }
+      ],
+      "code_slice": "static int davinci_psc_genpd_attach_dev(struct generic_pm_domain *pm_domain,\n\t\t\t\t\tstruct device *dev)\n{\n\tstruct davinci_lpsc_clk *lpsc = to_davinci_lpsc_clk(pm_domain);\n\tstruct clk *clk;\n\tint ret;\n\n\t/*\n\t * pm_clk_remove_clk() will call clk_put(), so we have to use clk_get()\n\t * to get the clock instead of using lpsc->hw.clk directly.\n\t */\n\tclk = clk_get_sys(best_dev_name(lpsc->dev), clk_hw_get_name(&lpsc->hw));\n\tif (IS_ERR(clk))\n\t\treturn (PTR_ERR(clk));\n\n\tret = pm_clk_create(dev);\n\tif (ret < 0)\n\t\tgoto fail_clk_put;\n\n\tret = pm_clk_add_clk(dev, clk);\n\tif (ret < 0)\n\t\tgoto fail_pm_clk_destroy;\n\n\tlpsc->genpd_clk = clk;\n\n\treturn 0;\n\nfail_pm_clk_destroy:\n\tpm_clk_destroy(dev);\nfail_clk_put:\n\tclk_put(clk);",
+      "function": "static int davinci_psc_genpd_attach_dev(struct generic_pm_domain *pm_domain,\n\t\t\t\t\tstruct device *dev)\n{\n\tstruct davinci_lpsc_clk *lpsc = to_davinci_lpsc_clk(pm_domain);\n\tstruct clk *clk;\n\tint ret;\n\n\t/*\n\t * pm_clk_remove_clk() will call clk_put(), so we have to use clk_get()\n\t * to get the clock instead of using lpsc->hw.clk directly.\n\t */\n\tclk = clk_get_sys(best_dev_name(lpsc->dev), clk_hw_get_name(&lpsc->hw));\n\tif (IS_ERR(clk))\n\t\treturn (PTR_ERR(clk));\n\n\tret = pm_clk_create(dev);\n\tif (ret < 0)\n\t\tgoto fail_clk_put;\n\n\tret = pm_clk_add_clk(dev, clk);\n\tif (ret < 0)\n\t\tgoto fail_pm_clk_destroy;\n\n\tlpsc->genpd_clk = clk;\n\n\treturn 0;\n\nfail_pm_clk_destroy:\n\tpm_clk_destroy(dev);\nfail_clk_put:\n\tclk_put(clk);\n\n\treturn ret;\n}",
+      "var_origin": "local",
+      "var_origin_reason": "local_assignment"
+    }
+  },
+  {
+    "func_name": "berlin2q_clock_setup",
+    "var": "clk",
+    "model": "deepseek-v4-flash",
+    "llm_output": {
+      "security_sensitive_behaviors": "When of_clk_get_by_name acquires a clock reference for clk, it creates a reference leak risk because the clock reference must be released after use to avoid resource exhaustion.",
+      "defensive_behaviors": "The clk_put is executed after __clk_get_name uses clk to prevent clock reference leak by releasing the acquired clock reference.",
+      "analysis": "When of_clk_get_by_name acquires a clock reference for clk, it creates a reference leak risk because the clock reference must be released after use to avoid resource exhaustion.",
+      "critical_calls": null
+    },
+    "llm_input": {
+      "var_statements": [
+        {
+          "func": "of_clk_get_by_name",
+          "stmt": "clk = of_clk_get_by_name(np, clk_names[REFCLK]);"
+        },
+        {
+          "func": "__clk_get_name",
+          "stmt": "clk_names[REFCLK] = __clk_get_name(clk);"
+        },
+        {
+          "func": "clk_put",
+          "stmt": "clk_put(clk);"
+        }
+      ],
+      "code_slice": "static void __init berlin2q_clock_setup(struct device_node *np)\n{\n\tstruct device_node *parent_np = of_get_parent(np);\n\tconst char *parent_names[9];\n\tstruct clk *clk;\n\tstruct clk_hw **hws;\n\tint n, ret;\n\n\tclk_data = kzalloc(struct_size(clk_data, hws, MAX_CLKS), GFP_KERNEL);\n\tif (!clk_data) {\n\t\tof_node_put(parent_np);\n\t\treturn;\n\t}\n\tclk_data->num = MAX_CLKS;\n\thws = clk_data->hws;\n\n\tgbase = of_iomap(parent_np, 0);\n\tif (!gbase) {\n\t\tof_node_put(parent_np);\n\t\tpr_err(\"%pOF: Unable to map global base\\n\", np);\n\t\treturn;\n\t}\n\n\t/* BG2Q CPU PLL is not part of global registers */\n\tcpupll_base = of_iomap(parent_np, 1);\n\tof_node_put(parent_np);\n\tif (!cpupll_base) {\n\t\tpr_err(\"%pOF: Unable to map cpupll base\\n\", np);\n\t\tiounmap(gbase);\n\t\treturn;\n\t}\n\n\t/* overwrite default clock names with DT provided ones */\n\tclk = of_clk_get_by_name(np, clk_names[REFCLK]);\n\tif (!IS_ERR(clk)) {\n\t\tclk_names[REFCLK] = __clk_get_name(clk);\n\t\tclk_put(clk);",
+      "function": "static void __init berlin2q_clock_setup(struct device_node *np)\n{\n\tstruct device_node *parent_np = of_get_parent(np);\n\tconst char *parent_names[9];\n\tstruct clk *clk;\n\tstruct clk_hw **hws;\n\tint n, ret;\n\n\tclk_data = kzalloc(struct_size(clk_data, hws, MAX_CLKS), GFP_KERNEL);\n\tif (!clk_data) {\n\t\tof_node_put(parent_np);\n\t\treturn;\n\t}\n\tclk_data->num = MAX_CLKS;\n\thws = clk_data->hws;\n\n\tgbase = of_iomap(parent_np, 0);\n\tif (!gbase) {\n\t\tof_node_put(parent_np);\n\t\tpr_err(\"%pOF: Unable to map global base\\n\", np);\n\t\treturn;\n\t}\n\n\t/* BG2Q CPU PLL is not part of global registers */\n\tcpupll_base = of_iomap(parent_np, 1);\n\tof_node_put(parent_np);\n\tif (!cpupll_base) {\n\t\tpr_err(\"%pOF: Unable to map cpupll base\\n\", np);\n\t\tiounmap(gbase);\n\t\treturn;\n\t}\n\n\t/* overwrite default clock names with DT provided ones */\n\tclk = of_clk_get_by_name(np, clk_names[REFCLK]);\n\tif (!IS_ERR(clk)) {\n\t\tclk_names[REFCLK] = __clk_get_name(clk);\n\t\tclk_put(clk);\n\t}\n\n\t/* simple register PLLs */\n\tret = berlin2_pll_register(&bg2q_pll_map, gbase + REG_SYSPLLCTL0,\n\t\t\t\t   clk_names[SYSPLL], clk_names[REFCLK], 0);\n\tif (ret)\n\t\tgoto bg2q_fail;\n\n\tret = berlin2_pll_register(&bg2q_pll_map, cpupll_base,\n\t\t\t\t   clk_names[CPUPLL], clk_names[REFCLK], 0);\n\tif (ret)\n\t\tgoto bg2q_fail;\n\n\t/* TODO: add BG2Q AVPLL */\n\n\t/*\n\t * TODO: add reference clock bypass switches:\n\t * memPLLSWBypass, cpuPLLSWBypass, and sysPLLSWBypass\n\t */\n\n\t/* clock divider cells */\n\tfor (n = 0; n < ARRAY_SIZE(bg2q_divs); n++) {\n\t\tconst struct berlin2_div_data *dd = &bg2q_divs[n];\n\t\tint k;\n\n\t\tfor (k = 0; k < dd->num_parents; k++)\n\t\t\tparent_names[k] = clk_names[dd->parent_ids[k]];\n\n\t\thws[CLKID_SYS + n] = berlin2_div_register(&dd->map, gbase,\n\t\t\t\tdd->name, dd->div_flags, parent_names,\n\t\t\t\tdd->num_parents, dd->flags, &lock);\n\t}\n\n\t/* clock gate cells */\n\tfor (n = 0; n < ARRAY_SIZE(bg2q_gates); n++) {\n\t\tconst struct berlin2_gate_data *gd = &bg2q_gates[n];\n\n\t\thws[CLKID_GFX2DAXI + n] = clk_hw_register_gate(NULL, gd->name,\n\t\t\t    gd->parent_name, gd->flags, gbase + REG_CLKENABLE,\n\t\t\t    gd->bit_idx, 0, &lock);\n\t}\n\n\t/* cpuclk divider is fixed to 1 */\n\thws[CLKID_CPU] =\n\t\tclk_hw_register_fixed_factor(NULL, \"cpu\", clk_names[CPUPLL],\n\t\t\t\t\t  0, 1, 1);\n\t/* twdclk is derived from cpu/3 */\n\thws[CLKID_TWD] =\n\t\tclk_hw_register_fixed_factor(NULL, \"twd\", \"cpu\", 0, 1, 3);\n\n\t/* check for errors on leaf clocks */\n\tfor (n = 0; n < MAX_CLKS; n++) {\n\t\tif (!IS_ERR(hws[n]))\n\t\t\tcontinue;\n\n\t\tpr_err(\"%pOF: Unable to register leaf clock %d\\n\", np, n);\n\t\tgoto bg2q_fail;\n\t}\n\n\t/* register clk-provider */\n\tof_clk_add_hw_provider(np, of_clk_hw_onecell_get, clk_data);\n\n\treturn;\n\nbg2q_fail:\n\tiounmap(cpupll_base);\n\tiounmap(gbase);\n}",
+      "var_origin": "local",
+      "var_origin_reason": "local_assignment"
+    }
+  },
+  {
+    "func_name": "clk_test_orphan_transparent_multiple_parent_mux_set_range_round_rate",
+    "var": "clk",
+    "model": "deepseek-v4-flash",
+    "llm_output": {
+      "security_sensitive_behaviors": "When clk_hw_get_clk allocates a clock reference for clk, it creates a reference leak risk because the reference must be released to avoid resource exhaustion.",
+      "defensive_behaviors": "The clk_put is executed at the end of the function to prevent clock reference leak by releasing the clk reference obtained from clk_hw_get_clk.",
+      "analysis": "When clk_hw_get_clk allocates a clock reference for clk, it creates a reference leak risk because the reference must be released to avoid resource exhaustion.",
+      "critical_calls": null
+    },
+    "llm_input": {
+      "var_statements": [
+        {
+          "func": "clk_hw_get_clk",
+          "stmt": "struct clk *clk = clk_hw_get_clk(hw, NULL);"
+        },
+        {
+          "func": "clk_set_rate_range",
+          "stmt": "ret = clk_set_rate_range(clk, DUMMY_CLOCK_RATE_1, DUMMY_CLOCK_RATE_2);"
+        },
+        {
+          "func": "clk_round_rate",
+          "stmt": "rate = clk_round_rate(clk, DUMMY_CLOCK_RATE_1 - 1000);"
+        },
+        {
+          "func": "clk_put",
+          "stmt": "clk_put(clk);"
+        }
+      ],
+      "code_slice": "clk_test_orphan_transparent_multiple_parent_mux_set_range_round_rate(struct kunit *test)\n{\n\tstruct clk_multiple_parent_ctx *ctx = test->priv;\n\tstruct clk_hw *hw = &ctx->hw;\n\tstruct clk *clk = clk_hw_get_clk(hw, NULL);\n\tlong rate;\n\tint ret;\n\n\tret = clk_set_rate_range(clk, DUMMY_CLOCK_RATE_1, DUMMY_CLOCK_RATE_2);\n\tKUNIT_ASSERT_EQ(test, ret, 0);\n\n\trate = clk_round_rate(clk, DUMMY_CLOCK_RATE_1 - 1000);\n\tKUNIT_ASSERT_GT(test, rate, 0);\n\tKUNIT_EXPECT_GE(test, rate, DUMMY_CLOCK_RATE_1);\n\tKUNIT_EXPECT_LE(test, rate, DUMMY_CLOCK_RATE_2);\n\n\tclk_put(clk);",
+      "function": "static void\nclk_test_orphan_transparent_multiple_parent_mux_set_range_round_rate(struct kunit *test)\n{\n\tstruct clk_multiple_parent_ctx *ctx = test->priv;\n\tstruct clk_hw *hw = &ctx->hw;\n\tstruct clk *clk = clk_hw_get_clk(hw, NULL);\n\tlong rate;\n\tint ret;\n\n\tret = clk_set_rate_range(clk, DUMMY_CLOCK_RATE_1, DUMMY_CLOCK_RATE_2);\n\tKUNIT_ASSERT_EQ(test, ret, 0);\n\n\trate = clk_round_rate(clk, DUMMY_CLOCK_RATE_1 - 1000);\n\tKUNIT_ASSERT_GT(test, rate, 0);\n\tKUNIT_EXPECT_GE(test, rate, DUMMY_CLOCK_RATE_1);\n\tKUNIT_EXPECT_LE(test, rate, DUMMY_CLOCK_RATE_2);\n\n\tclk_put(clk);\n}",
+      "var_origin": "local",
+      "var_origin_reason": "local_assignment"
+    }
+  }
+]

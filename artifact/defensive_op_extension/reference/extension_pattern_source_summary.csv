@@ -1,0 +1,5 @@
+seed_defensive_op,compact_pattern_source,available_compact_rows,defensive_ops_with_compact_rows,wrapper_defensive_ops_in_paper,inferred_patterns_in_paper,notes
+kfree,packaged compact pattern summary,3081,1761,6301,334,available compact rows from historical pattern CSV; final paper pattern count is shown separately
+of_node_put,packaged compact pattern summary,7,4,28,1,available compact rows from historical pattern CSV; final paper pattern count is shown separately
+clk_put,packaged compact pattern summary,14,13,31,12,available compact rows from historical pattern CSV; final paper pattern count is shown separately
+kref_put,packaged compact pattern summary,1654,653,1583,388,reconstructed from parsed LLM reports because the compact historical source only contains two rows; final paper pattern count is shown separately

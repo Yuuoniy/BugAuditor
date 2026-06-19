@@ -1,0 +1,8 @@
+defensive_op,usage_located,collected_functions,spec_patterns
+kfree,27749,11921,922
+of_node_put,2224,1664,102
+clk_put,359,181,8
+null-ptr-check,62240,27344,6175
+negative-check,20086,16114,7013
+err-ptr-check,10878,5208,2288
+TOTAL,123536,62432,16508

@@ -1,0 +1,5 @@
+seed_defensive_op,expanded_manifest,expanded_defensive_ops,seed_present,wrappers_excluding_seed
+kfree,packaged expanded-operation manifest,6302,yes,6301
+of_node_put,packaged expanded-operation manifest,29,yes,28
+clk_put,packaged expanded-operation manifest,32,yes,31
+kref_put,packaged expanded-operation manifest,1583,yes,1582

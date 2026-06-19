@@ -1,0 +1,538 @@
+{
+  "defensive_op": "clk_put",
+  "repo": "linux",
+  "pattern": {
+    "name": "clk_put:berlin2q_clock_setup",
+    "source_func": "berlin2q_clock_setup",
+    "source_defensive_op": "clk_put",
+    "security_sensitive_behaviors": [
+      "When of_clk_get_by_name acquires a clock reference for clk, it creates a reference leak risk because the clock reference must be released after use to avoid resource exhaustion."
+    ],
+    "defensive_behaviors": [
+      "The clk_put is executed after __clk_get_name uses clk to prevent clock reference leak by releasing the acquired clock reference."
+    ]
+  },
+  "generated_query": "_ $func(_){of_clk_get_by_name(_);}",
+  "located_comparable_functions": 66,
+  "located_candidates": [
+    {
+      "func_name": "rzg2l_cpg_register_core_clk",
+      "path": "drivers/clk/renesas/rzg2l-cpg.c"
+    },
+    {
+      "func_name": "snow_probe",
+      "path": "sound/soc/samsung/snow.c"
+    },
+    {
+      "func_name": "mxc_timer_init_dt",
+      "path": "drivers/clocksource/timer-imx-gpt.c"
+    },
+    {
+      "func_name": "input_clock_by_name",
+      "path": "drivers/clk/clk-qoriq.c"
+    },
+    {
+      "func_name": "exynos_arm64_enable_bus_clk",
+      "path": "drivers/clk/samsung/clk-exynos-arm64.c"
+    },
+    {
+      "func_name": "dmtimer_systimer_init_clock",
+      "path": "drivers/clocksource/timer-ti-dm-systimer.c"
+    },
+    {
+      "func_name": "sama7g5_pmc_setup",
+      "path": "drivers/clk/at91/sama7g5.c"
+    },
+    {
+      "func_name": "fttmr010_common_init",
+      "path": "drivers/clocksource/timer-fttmr010.c"
+    },
+    {
+      "func_name": "ingenic_ost_probe",
+      "path": "drivers/clocksource/ingenic-sysost.c"
+    },
+    {
+      "func_name": "mchp_eic_init",
+      "path": "drivers/irqchip/irq-mchp-eic.c"
+    },
+    {
+      "func_name": "berlin2q_clock_setup",
+      "path": "drivers/clk/berlin/bg2q.c"
+    },
+    {
+      "func_name": "vf610_get_fixed_clock",
+      "path": "drivers/clk/imx/clk-vf610.c"
+    },
+    {
+      "func_name": "timer_get_base_and_rate",
+      "path": "drivers/clocksource/dw_apb_timer_of.c"
+    },
+    {
+      "func_name": "pl35x_nfc_setup_interface",
+      "path": "drivers/mtd/nand/raw/pl35x-nand-controller.c"
+    },
+    {
+      "func_name": "imx6q_obtain_fixed_clk_hw",
+      "path": "drivers/clk/imx/clk-imx6q.c"
+    },
+    {
+      "func_name": "samsung_pwm_alloc",
+      "path": "drivers/clocksource/samsung_pwm_timer.c"
+    },
+    {
+      "func_name": "armada375_wdt_clock_init",
+      "path": "drivers/watchdog/orion_wdt.c"
+    },
+    {
+      "func_name": "armadaxp_wdt_clock_init",
+      "path": "drivers/watchdog/orion_wdt.c"
+    },
+    {
+      "func_name": "nmdk_timer_of_init",
+      "path": "drivers/clocksource/nomadik-mtu.c"
+    },
+    {
+      "func_name": "__ftm_clk_init",
+      "path": "drivers/clocksource/timer-fsl-ftm.c"
+    },
+    {
+      "func_name": "mpc512x_clk_setup_ref_clock",
+      "path": "arch/powerpc/platforms/512x/clock-commonclk.c"
+    },
+    {
+      "func_name": "of_pm_clk_add_clk",
+      "path": "drivers/base/power/clock_ops.c"
+    },
+    {
+      "func_name": "orion_mdio_xsmi_set_mdc_freq",
+      "path": "drivers/net/ethernet/marvell/mvmdio.c"
+    },
+    {
+      "func_name": "tcb_clksrc_init",
+      "path": "drivers/clocksource/timer-atmel-tcb.c"
+    },
+    {
+      "func_name": "fsl_tcon_init",
+      "path": "drivers/gpu/drm/fsl-dcu/fsl_tcon.c"
+    },
+    {
+      "func_name": "load_one_timing_from_dt",
+      "path": "drivers/clk/tegra/clk-tegra124-emc.c"
+    },
+    {
+      "func_name": "rk_timer_probe",
+      "path": "drivers/clocksource/timer-rockchip.c"
+    },
+    {
+      "func_name": "tegra124_cpufreq_probe",
+      "path": "drivers/cpufreq/tegra124-cpufreq.c"
+    },
+    {
+      "func_name": "komeda_parse_pipe_dt",
+      "path": "drivers/gpu/drm/arm/display/komeda/komeda_dev.c"
+    },
+    {
+      "func_name": "exynos4_timer_resources",
+      "path": "drivers/clocksource/exynos_mct.c"
+    },
+    {
+      "func_name": "ingenic_register_clock",
+      "path": "drivers/clk/ingenic/cgu.c"
+    },
+    {
+      "func_name": "cpg_mssr_register_core_clk",
+      "path": "drivers/clk/renesas/renesas-cpg-mssr.c"
+    },
+    {
+      "func_name": "get_clock_deps",
+      "path": "drivers/clk/stm32/clk-stm32mp1.c"
+    },
+    {
+      "func_name": "imx_obtain_fixed_of_clock",
+      "path": "drivers/clk/imx/clk.c"
+    },
+    {
+      "func_name": "imx_get_clk_hw_by_name",
+      "path": "drivers/clk/imx/clk.c"
+    },
+    {
+      "func_name": "get_soc_id_by_pci",
+      "path": "arch/arm/mach-mvebu/mvebu-soc-id.c"
+    },
+    {
+      "func_name": "devm_get_clk_from_child",
+      "path": "drivers/clk/clk-devres.c"
+    },
+    {
+      "func_name": "sysc_add_named_clock_from_child",
+      "path": "drivers/bus/ti-sysc.c"
+    },
+    {
+      "func_name": "imx8mq_soc_revision",
+      "path": "drivers/soc/imx/soc-imx8m.c"
+    },
+    {
+      "func_name": "imx8mm_soc_uid",
+      "path": "drivers/soc/imx/soc-imx8m.c"
+    },
+    {
+      "func_name": "atmel_tcb_pwm_probe",
+      "path": "drivers/pwm/pwm-atmel-tcb.c"
+    },
+    {
+      "func_name": "tsa_of_parse_tdms",
+      "path": "drivers/soc/fsl/qe/tsa.c"
+    },
+    {
+      "func_name": "pistachio_clksrc_of_init",
+      "path": "drivers/clocksource/timer-pistachio.c"
+    },
+    {
+      "func_name": "at91_pm_get_eth_clks",
+      "path": "arch/arm/mach-at91/pm.c"
+    },
+    {
+      "func_name": "am33xx_pm_rtc_setup",
+      "path": "drivers/soc/ti/pm33xx.c"
+    },
+    {
+      "func_name": "st_i2c_probe",
+      "path": "drivers/i2c/busses/i2c-st.c"
+    },
+    {
+      "func_name": "brcm_usb_phy_dvr_init",
+      "path": "drivers/phy/broadcom/phy-brcm-usb.c"
+    },
+    {
+      "func_name": "ti_32k_timer_enable_clock",
+      "path": "drivers/clocksource/timer-ti-32k.c"
+    },
+    {
+      "func_name": "exynos_clkout_probe",
+      "path": "drivers/clk/samsung/clk-exynos-clkout.c"
+    },
+    {
+      "func_name": "mtk_hdmi_get_all_clk",
+      "path": "drivers/gpu/drm/mediatek/mtk_hdmi.c"
+    },
+    {
+      "func_name": "mchp_tc_probe",
+      "path": "drivers/counter/microchip-tcb-capture.c"
+    },
+    {
+      "func_name": "berlin2_clock_setup",
+      "path": "drivers/clk/berlin/bg2.c"
+    },
+    {
+      "func_name": "mvebu_pcie_parse_port",
+      "path": "drivers/pci/controller/pci-mvebu.c"
+    },
+    {
+      "func_name": "timer_of_clk_init",
+      "path": "drivers/clocksource/timer-of.c"
+    },
+    {
+      "func_name": "imx6q_1588_init",
+      "path": "arch/arm/mach-imx/mach-imx6q.c"
+    },
+    {
+      "func_name": "mchp_pit64b_dt_init_timer",
+      "path": "drivers/clocksource/timer-microchip-pit64b.c"
+    },
+    {
+      "func_name": "rockchip_usb_phy_init",
+      "path": "drivers/phy/rockchip/phy-rockchip-usb.c"
+    },
+    {
+      "func_name": "kirkwood_cpufreq_probe",
+      "path": "drivers/cpufreq/kirkwood-cpufreq.c"
+    },
+    {
+      "func_name": "tpm_timer_init",
+      "path": "drivers/clocksource/timer-imx-tpm.c"
+    },
+    {
+      "func_name": "ingenic_tcu_probe",
+      "path": "drivers/clk/ingenic/tcu.c"
+    },
+    {
+      "func_name": "stm32_pctl_probe",
+      "path": "drivers/pinctrl/stm32/pinctrl-stm32.c"
+    },
+    {
+      "func_name": "odroid_audio_probe",
+      "path": "sound/soc/samsung/odroid.c"
+    },
+    {
+      "func_name": "lpc32xx_clk_init",
+      "path": "drivers/clk/nxp/clk-lpc32xx.c"
+    },
+    {
+      "func_name": "armada_xp_timer_init",
+      "path": "drivers/clocksource/timer-armada-370-xp.c"
+    },
+    {
+      "func_name": "armada_375_timer_init",
+      "path": "drivers/clocksource/timer-armada-370-xp.c"
+    },
+    {
+      "func_name": "kona_timer_init",
+      "path": "drivers/clocksource/bcm_kona_timer.c"
+    }
+  ],
+  "sampled_comparable_functions": [
+    {
+      "sample_index": "0",
+      "function": "orion_mdio_xsmi_set_mdc_freq",
+      "security_sensitive_operation": "of_clk_get_by_name"
+    },
+    {
+      "sample_index": "1",
+      "function": "mtk_hdmi_get_all_clk",
+      "security_sensitive_operation": "of_clk_get_by_name"
+    },
+    {
+      "sample_index": "2",
+      "function": "mxc_timer_init_dt",
+      "security_sensitive_operation": "of_clk_get_by_name"
+    },
+    {
+      "sample_index": "3",
+      "function": "lpc32xx_clk_init",
+      "security_sensitive_operation": "of_clk_get_by_name"
+    },
+    {
+      "sample_index": "4",
+      "function": "brcm_usb_phy_dvr_init",
+      "security_sensitive_operation": "of_clk_get_by_name"
+    },
+    {
+      "sample_index": "5",
+      "function": "pistachio_clksrc_of_init",
+      "security_sensitive_operation": "of_clk_get_by_name"
+    },
+    {
+      "sample_index": "6",
+      "function": "nmdk_timer_of_init",
+      "security_sensitive_operation": "of_clk_get_by_name"
+    },
+    {
+      "sample_index": "7",
+      "function": "st_i2c_probe",
+      "security_sensitive_operation": "of_clk_get_by_name"
+    },
+    {
+      "sample_index": "8",
+      "function": "ingenic_register_clock",
+      "security_sensitive_operation": "of_clk_get_by_name"
+    },
+    {
+      "sample_index": "9",
+      "function": "load_one_timing_from_dt",
+      "security_sensitive_operation": "of_clk_get_by_name"
+    }
+  ],
+  "audit": [
+    {
+      "sample_index": 0,
+      "func_name": "orion_mdio_xsmi_set_mdc_freq",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "parsed": {
+        "verdict": "consistent",
+        "missing_defenses": []
+      },
+      "verdict": "consistent"
+    },
+    {
+      "sample_index": 1,
+      "func_name": "mtk_hdmi_get_all_clk",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "parsed": {
+        "verdict": "consistent",
+        "missing_defenses": []
+      },
+      "verdict": "consistent"
+    },
+    {
+      "sample_index": 2,
+      "func_name": "mxc_timer_init_dt",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "parsed": {
+        "verdict": "inconsistent",
+        "missing_defenses": [
+          "clk_put"
+        ]
+      },
+      "verdict": "inconsistent",
+      "bug_report": {
+        "buggy_function": "mxc_timer_init_dt",
+        "buggy_function_path": "drivers/clocksource/timer-imx-gpt.c",
+        "pattern_source_func": "berlin2q_clock_setup",
+        "security_sensitive_operation": "of_clk_get_by_name",
+        "missing_defenses": [
+          "clk_put"
+        ],
+        "detailed_missing_defenses": [
+          "clk_put for imxtm->clk_ipg and imxtm->clk_per on error path"
+        ],
+        "bug_explanation": "The function acquires clock references via of_clk_get_by_name for imxtm->clk_ipg and imxtm->clk_per. On the error path (goto err_kfree), only kfree(imxtm) is called, but the acquired clock references are not released via clk_put. This causes a clock reference leak, which can lead to resource exhaustion. The clocks are stored in a local structure that does not escape on error, so cleanup is required."
+      }
+    },
+    {
+      "sample_index": 3,
+      "func_name": "lpc32xx_clk_init",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "parsed": {
+        "verdict": "inconsistent",
+        "missing_defenses": [
+          "clk_put"
+        ]
+      },
+      "verdict": "inconsistent",
+      "bug_report": {
+        "buggy_function": "lpc32xx_clk_init",
+        "buggy_function_path": "drivers/clk/nxp/clk-lpc32xx.c",
+        "pattern_source_func": "berlin2q_clock_setup",
+        "security_sensitive_operation": "of_clk_get_by_name",
+        "missing_defenses": [
+          "clk_put"
+        ],
+        "detailed_missing_defenses": [
+          "clk_put(clk_32k) before early return on invalid rate",
+          "clk_put(clk_osc) before early return on missing base or regmap error"
+        ],
+        "bug_explanation": "The function acquires clock references via of_clk_get_by_name for clk_32k and clk_osc. On subsequent error paths (invalid rate for clk_32k, missing base, regmap failure), the function returns without releasing these acquired clock references, causing a resource leak. The clk_32k is leaked on the invalid rate check, and clk_osc is leaked on the base and regmap error paths. The clocks are not returned or stored in a way that escapes the function, so local cleanup is required. The missing cleanup is a corresponding clk_put release before those exits."
+      }
+    },
+    {
+      "sample_index": 4,
+      "func_name": "brcm_usb_phy_dvr_init",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "parsed": {
+        "verdict": "inconsistent",
+        "missing_defenses": [
+          "clk_put"
+        ]
+      },
+      "verdict": "inconsistent",
+      "bug_report": {
+        "buggy_function": "brcm_usb_phy_dvr_init",
+        "buggy_function_path": "drivers/phy/broadcom/phy-brcm-usb.c",
+        "pattern_source_func": "berlin2q_clock_setup",
+        "security_sensitive_operation": "of_clk_get_by_name",
+        "missing_defenses": [
+          "clk_put"
+        ],
+        "detailed_missing_defenses": [
+          "clk_put for priv->usb_20_clk on error path after clk_prepare_enable"
+        ],
+        "bug_explanation": "The function acquires priv->usb_20_clk via of_clk_get_by_name and then calls clk_prepare_enable. If clk_prepare_enable succeeds but a later error occurs (e.g., devm_phy_create fails or clk_prepare_enable for usb_30_clk fails), the function returns without releasing the clock via clk_put. The clock reference is stored in priv, which is a caller-provided struct, so it escapes the function. However, on error paths, the caller may not know to release it, and the function does not clean up. This leads to a clock reference leak."
+      }
+    },
+    {
+      "sample_index": 5,
+      "func_name": "pistachio_clksrc_of_init",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "parsed": {
+        "verdict": "inconsistent",
+        "missing_defenses": [
+          "clk_put"
+        ]
+      },
+      "verdict": "inconsistent",
+      "bug_report": {
+        "buggy_function": "pistachio_clksrc_of_init",
+        "buggy_function_path": "drivers/clocksource/timer-pistachio.c",
+        "pattern_source_func": "berlin2q_clock_setup",
+        "security_sensitive_operation": "of_clk_get_by_name",
+        "missing_defenses": [
+          "clk_put"
+        ],
+        "detailed_missing_defenses": [
+          "clk_put for sys_clk and fast_clk on success path"
+        ],
+        "bug_explanation": "The function acquires two clock references via of_clk_get_by_name and enables them. On the success path, the clocks are never released via clk_put, causing a reference leak. The clocks are used locally (not returned or stored in a caller-provided structure), so they must be released before the function returns. The error paths correctly release enabled clocks, but the success path omits clk_put calls."
+      }
+    },
+    {
+      "sample_index": 6,
+      "func_name": "nmdk_timer_of_init",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "parsed": {
+        "verdict": "inconsistent",
+        "missing_defenses": [
+          "clk_put"
+        ]
+      },
+      "verdict": "inconsistent",
+      "bug_report": {
+        "buggy_function": "nmdk_timer_of_init",
+        "buggy_function_path": "drivers/clocksource/nomadik-mtu.c",
+        "pattern_source_func": "berlin2q_clock_setup",
+        "security_sensitive_operation": "of_clk_get_by_name",
+        "missing_defenses": [
+          "clk_put"
+        ],
+        "detailed_missing_defenses": [
+          "clk_put(pclk) on error path after clk acquisition",
+          "clk_put(clk) on error path after clk acquisition",
+          "iounmap(base) on error path after ioremap"
+        ],
+        "bug_explanation": "The function acquires resources (base via of_iomap, pclk and clk via of_clk_get_by_name) but fails to release them on subsequent error paths. Specifically: if of_clk_get_by_name for 'timclk' fails, pclk is leaked; if irq_of_parse_and_map fails, both pclk and clk are leaked; if of_iomap fails, no leak occurs because no resources were acquired. The resources do not escape the function (they are passed to nmdk_timer_init, but that function is not shown to take ownership; the caller does not release them). Thus, missing clk_put and iounmap on error paths constitutes a resource leak bug."
+      }
+    },
+    {
+      "sample_index": 7,
+      "func_name": "st_i2c_probe",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "parsed": {
+        "verdict": "inconsistent",
+        "missing_defenses": [
+          "clk_put"
+        ]
+      },
+      "verdict": "inconsistent",
+      "bug_report": {
+        "buggy_function": "st_i2c_probe",
+        "buggy_function_path": "drivers/i2c/busses/i2c-st.c",
+        "pattern_source_func": "berlin2q_clock_setup",
+        "security_sensitive_operation": "of_clk_get_by_name",
+        "missing_defenses": [
+          "clk_put"
+        ],
+        "detailed_missing_defenses": [
+          "clk_put on error paths after of_clk_get_by_name succeeds"
+        ],
+        "bug_explanation": "The function acquires a clock reference via of_clk_get_by_name and stores it in i2c_dev->clk. On subsequent error paths (e.g., devm_request_threaded_irq failure, st_i2c_of_get_deglitch failure, i2c_add_adapter failure), the function returns without calling clk_put to release the clock reference. Since i2c_dev is allocated with devm_kzalloc and the clock is not managed by devm, the reference leaks on these error returns. The clock reference does not escape the function (it is stored in a device-managed structure but not released automatically), so missing clk_put is a bug."
+      }
+    },
+    {
+      "sample_index": 8,
+      "func_name": "ingenic_register_clock",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "parsed": {
+        "verdict": "consistent",
+        "missing_defenses": []
+      },
+      "verdict": "consistent"
+    },
+    {
+      "sample_index": 9,
+      "func_name": "load_one_timing_from_dt",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "parsed": {
+        "verdict": "consistent",
+        "missing_defenses": []
+      },
+      "verdict": "consistent"
+    }
+  ],
+  "summary": {
+    "sampled_functions_audited": 10,
+    "reported_issues": 6,
+    "consistent_functions": 4
+  },
+  "token_stats": {
+    "total_tokens": 15216
+  }
+}

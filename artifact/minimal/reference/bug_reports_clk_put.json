@@ -1,0 +1,89 @@
+{
+  "defensive_op": "clk_put",
+  "pattern_source_func": "berlin2q_clock_setup",
+  "security_sensitive_operation": "of_clk_get_by_name",
+  "total_bugs": 6,
+  "items": [
+    {
+      "buggy_function": "mxc_timer_init_dt",
+      "buggy_function_path": "drivers/clocksource/timer-imx-gpt.c",
+      "pattern_source_func": "berlin2q_clock_setup",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "missing_defenses": [
+        "clk_put"
+      ],
+      "detailed_missing_defenses": [
+        "clk_put for imxtm->clk_ipg and imxtm->clk_per on error path"
+      ],
+      "bug_explanation": "The function acquires clock references via of_clk_get_by_name for imxtm->clk_ipg and imxtm->clk_per. On the error path (goto err_kfree), only kfree(imxtm) is called, but the acquired clock references are not released via clk_put. This causes a clock reference leak, which can lead to resource exhaustion. The clocks are stored in a local structure that does not escape on error, so cleanup is required."
+    },
+    {
+      "buggy_function": "lpc32xx_clk_init",
+      "buggy_function_path": "drivers/clk/nxp/clk-lpc32xx.c",
+      "pattern_source_func": "berlin2q_clock_setup",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "missing_defenses": [
+        "clk_put"
+      ],
+      "detailed_missing_defenses": [
+        "clk_put(clk_32k) before early return on invalid rate",
+        "clk_put(clk_osc) before early return on missing base or regmap error"
+      ],
+      "bug_explanation": "The function acquires clock references via of_clk_get_by_name for clk_32k and clk_osc. On subsequent error paths (invalid rate for clk_32k, missing base, regmap failure), the function returns without releasing these acquired clock references, causing a resource leak. The clk_32k is leaked on the invalid rate check, and clk_osc is leaked on the base and regmap error paths. The clocks are not returned or stored in a way that escapes the function, so local cleanup is required. The missing cleanup is a corresponding clk_put release before those exits."
+    },
+    {
+      "buggy_function": "brcm_usb_phy_dvr_init",
+      "buggy_function_path": "drivers/phy/broadcom/phy-brcm-usb.c",
+      "pattern_source_func": "berlin2q_clock_setup",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "missing_defenses": [
+        "clk_put"
+      ],
+      "detailed_missing_defenses": [
+        "clk_put for priv->usb_20_clk on error path after clk_prepare_enable"
+      ],
+      "bug_explanation": "The function acquires priv->usb_20_clk via of_clk_get_by_name and then calls clk_prepare_enable. If clk_prepare_enable succeeds but a later error occurs (e.g., devm_phy_create fails or clk_prepare_enable for usb_30_clk fails), the function returns without releasing the clock via clk_put. The clock reference is stored in priv, which is a caller-provided struct, so it escapes the function. However, on error paths, the caller may not know to release it, and the function does not clean up. This leads to a clock reference leak."
+    },
+    {
+      "buggy_function": "pistachio_clksrc_of_init",
+      "buggy_function_path": "drivers/clocksource/timer-pistachio.c",
+      "pattern_source_func": "berlin2q_clock_setup",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "missing_defenses": [
+        "clk_put"
+      ],
+      "detailed_missing_defenses": [
+        "clk_put for sys_clk and fast_clk on success path"
+      ],
+      "bug_explanation": "The function acquires two clock references via of_clk_get_by_name and enables them. On the success path, the clocks are never released via clk_put, causing a reference leak. The clocks are used locally (not returned or stored in a caller-provided structure), so they must be released before the function returns. The error paths correctly release enabled clocks, but the success path omits clk_put calls."
+    },
+    {
+      "buggy_function": "nmdk_timer_of_init",
+      "buggy_function_path": "drivers/clocksource/nomadik-mtu.c",
+      "pattern_source_func": "berlin2q_clock_setup",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "missing_defenses": [
+        "clk_put"
+      ],
+      "detailed_missing_defenses": [
+        "clk_put(pclk) on error path after clk acquisition",
+        "clk_put(clk) on error path after clk acquisition",
+        "iounmap(base) on error path after ioremap"
+      ],
+      "bug_explanation": "The function acquires resources (base via of_iomap, pclk and clk via of_clk_get_by_name) but fails to release them on subsequent error paths. Specifically: if of_clk_get_by_name for 'timclk' fails, pclk is leaked; if irq_of_parse_and_map fails, both pclk and clk are leaked; if of_iomap fails, no leak occurs because no resources were acquired. The resources do not escape the function (they are passed to nmdk_timer_init, but that function is not shown to take ownership; the caller does not release them). Thus, missing clk_put and iounmap on error paths constitutes a resource leak bug."
+    },
+    {
+      "buggy_function": "st_i2c_probe",
+      "buggy_function_path": "drivers/i2c/busses/i2c-st.c",
+      "pattern_source_func": "berlin2q_clock_setup",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "missing_defenses": [
+        "clk_put"
+      ],
+      "detailed_missing_defenses": [
+        "clk_put on error paths after of_clk_get_by_name succeeds"
+      ],
+      "bug_explanation": "The function acquires a clock reference via of_clk_get_by_name and stores it in i2c_dev->clk. On subsequent error paths (e.g., devm_request_threaded_irq failure, st_i2c_of_get_deglitch failure, i2c_add_adapter failure), the function returns without calling clk_put to release the clock reference. Since i2c_dev is allocated with devm_kzalloc and the clock is not managed by devm, the reference leaks on these error returns. The clock reference does not escape the function (it is stored in a device-managed structure but not released automatically), so missing clk_put is a bug."
+    }
+  ]
+}

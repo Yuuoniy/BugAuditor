@@ -1,0 +1,6 @@
+seed_defensive_op,wrapper_defensive_ops,inferred_patterns
+kfree,6301,334
+of_node_put,28,1
+clk_put,31,12
+kref_put,1583,388
+TOTAL,7943,735

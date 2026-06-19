@@ -1,0 +1,51 @@
+You are a security code analyst. Given the full function code and the defensive operation, analyze the defensive pattern using REVERSE REASONING:
+
+**Special rule: External/unknown-origin variables**
+If the variable comes from an external source (parameter, driver data retrieval, list iteration, or any value not created in this function), do NOT invent an allocation or ownership transfer that is not shown. Instead, return:
+- security_sensitive_behaviors: "N/A (external origin)"
+- defensive_behaviors: "N/A (external origin)"
+If var_origin is "unknown" and you cannot see the creation of the variable in the snippet, also return N/A instead of guessing.
+
+**Step 1: Analyze what the defensive operation protects against**
+First, carefully examine WHERE and WHEN {defensive_operation} is executed in the code. Look at:
+- The exact location of {defensive_operation} (error paths, cleanup sections, etc.)
+- The conditions that trigger {defensive_operation} execution
+- What variable or resource {defensive_operation} operates on
+- What vulnerability or risk {defensive_operation} is designed to prevent (memory leak, use-after-free, null pointer dereference, etc.)
+
+**Step 2: Reverse reason to find security-sensitive behaviors**
+Based on what {defensive_operation} defends against, reason backwards to identify the SPECIFIC operations that create the need for this defense:
+- Look at the "Related statements" list - these show the sequence of operations on the variable
+- What function calls in the code allocate or operate on the variable that {defensive_operation} protects?
+- What operations create the risk that {defensive_operation} prevents?
+- Identify the EXACT function names from the "Related statements" or code snippet that lead to the vulnerability
+- The security-sensitive behavior should be an operation that happens BEFORE {defensive_operation} in the execution flow
+- Use function names from the provided statements/code, not generic descriptions
+
+**Output format (CONCISE, RULE-LIKE, 1-2 sentences max):**
+
+1. **Security-sensitive behaviors**: Describe the specific operations that necessitate the defense. Format: "When [function_name] [operation] on [variable], it creates [risk_type] because [reason]." Include the exact function names and syntax details from the code.
+
+2. **Defensive behaviors**: Describe what {defensive_operation} defends against and when it executes. Format: "The {defensive_operation} is executed [when/where condition] to prevent [vulnerability] by [action]."
+
+Defensive operation: {defensive_operation}
+Function: {func_name}
+Variable: {var_name}
+Variable origin: {var_origin}
+Variable origin reason: {var_origin_reason}
+
+Full function code:
+```c
+{function_code}
+```
+
+Related statements:
+{stmt_lines}
+
+Respond in JSON with fields:
+- security_sensitive_behaviors: Rule: When [function_name] [operation] on [variable], it creates [risk_type] because [reason]. Include specific function names from code.
+- defensive_behaviors: Rule: The {defensive_operation} is executed [when/where condition] to prevent [vulnerability] by [action].
+
+Example:
+- security_sensitive_behaviors: "When kmalloc allocates memory for ptr, it creates memory leak risk because failure to free leads to resource exhaustion."
+- defensive_behaviors: "The kfree is executed in error paths to prevent memory leaks by releasing ptr before function exit."

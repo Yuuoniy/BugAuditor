@@ -1,0 +1,11 @@
+index,func_name,security_sensitive_operation,var,located_in_clk_put_contexts
+0,berlin2q_clock_setup,of_clk_get_by_name,clk,yes
+1,clk_test_orphan_transparent_multiple_parent_mux_set_range_round_rate,clk_hw_get_clk,clk,yes
+2,ath79_clocks_init_dt,of_clk_get,ref_clk,yes
+3,jz4740_pwm_request,clk_get,clk,yes
+4,rzg2l_cpg_attach_dev,of_clk_get_from_provider,clk,yes
+5,spear_setup_of_timer,clk_get_sys,gpt_clk,yes
+6,spear6xx_timer_init,clk_get_sys,gpt_clk,yes
+7,davinci_psc_genpd_attach_dev,clk_get_sys,clk,yes
+8,propagate_rate,clk_get_sys,clkp,yes
+9,plat_time_init,of_clk_get,clk,yes

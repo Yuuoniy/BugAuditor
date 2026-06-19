@@ -1,0 +1,9 @@
+[ae] reproduced bug detection
+packaged patterns: 26
+per-pattern audit limit: 10 comparable functions
+planned audit candidates: 224 (20 confirmed bugs, 204 random comparable)
+known-bug recall: 20/20
+bug reports: 20
+report file: artifact/results/r_bug_auditing/bug_reports.json
+audit results: artifact/results/r_bug_auditing/bug_auditing_results.csv
+LLM time/tokens: 78.633 seconds, 40,087 total tokens

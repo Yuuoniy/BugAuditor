@@ -1,0 +1,5 @@
+stage,command,wall_seconds,user_seconds,sys_seconds,cpu_percent,note
+locate_and_pattern_reasoning,bash artifact/minimal/run_pattern_reasoning.sh --reference,0.076,0.05,0.03,101,local reference-output check on 2026-06-18
+bug_auditing,bash artifact/minimal/run_bug_auditing.sh --reference,0.073,0.04,0.03,100,local reference-output check on 2026-06-18
+locate_and_pattern_reasoning,bash artifact/minimal/run_pattern_reasoning.sh,16.638,7.54,2.91,62,local real LLM run on 2026-06-18
+bug_auditing,bash artifact/minimal/run_bug_auditing.sh,10.406,8.44,2.29,103,local real LLM run on 2026-06-18

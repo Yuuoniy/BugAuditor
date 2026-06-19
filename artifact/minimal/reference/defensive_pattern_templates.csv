@@ -1,0 +1,2 @@
+template_id,occurrences,core_functions_count,security_template,defensive_template,core_functions_sample,source_parsed
+fe910554ec5d,182,8,"When {FUNC} is called, it creates a risk.",The clk_put is executed as a defensive behavior.,clk_get;clk_get_optional;clk_get_parent;clk_get_sys;clk_hw_get_clk;of_clk_get;of_clk_get_by_name;of_clk_get_from_provider,artifact/results/minimal/inferred_defensive_patterns.json

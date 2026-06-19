@@ -1,0 +1,14 @@
+[ae] reproduced defensive pattern reasoning
+[ae] per-seed sample target: 200 (minimum 50)
+[ae] kfree: defensive code 200, table operations 30/30, reference inferred patterns 200, estimated tokens 251084
+[ae] of_node_put: defensive code 200, table operations 30/30, reference inferred patterns 113, estimated tokens 225235
+[ae] clk_put: defensive code 200, table operations 8/8, reference inferred patterns 12, estimated tokens 217700
+[ae] null-ptr-check: defensive code 200, table operations 30/30, reference inferred patterns 198, estimated tokens 220450
+[ae] negative-check: defensive code 200, table operations 30/30, reference inferred patterns 200, estimated tokens 226473
+[ae] err-ptr-check: defensive code 200, table operations 30/30, reference inferred patterns 200, estimated tokens 225471
+[ae] total defensive-code samples: 1200
+[ae] total reference inferred patterns: 923
+[ae] estimated prompt/completion/total tokens: 1.267M / 0.099M / 1.366M
+[ae] estimated LLM time: 1107.862 seconds
+[ae] Table 18 top-operation coverage: 156/158
+[ae] outputs: artifact/results/r_pattern_reasoning/

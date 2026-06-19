@@ -1,0 +1,16 @@
+{
+  "pattern_inputs": 26,
+  "known_bug_cases": 20,
+  "known_bug_detections": 20,
+  "known_bug_recall": "20/20",
+  "known_bug_recall_rate": 1.0,
+  "bug_reports": 20,
+  "per_pattern_audit_limit": 10,
+  "planned_audit_candidates": 224,
+  "planned_confirmed_bugs": 20,
+  "planned_random_comparable": 204,
+  "elapsed_seconds": 78.633,
+  "prompt_tokens": 35451,
+  "completion_tokens": 4636,
+  "total_tokens": 40087
+}

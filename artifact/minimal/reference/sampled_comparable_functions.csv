@@ -1,0 +1,11 @@
+sample_index,function,security_sensitive_operation
+0,orion_mdio_xsmi_set_mdc_freq,of_clk_get_by_name
+1,mtk_hdmi_get_all_clk,of_clk_get_by_name
+2,mxc_timer_init_dt,of_clk_get_by_name
+3,lpc32xx_clk_init,of_clk_get_by_name
+4,brcm_usb_phy_dvr_init,of_clk_get_by_name
+5,pistachio_clksrc_of_init,of_clk_get_by_name
+6,nmdk_timer_of_init,of_clk_get_by_name
+7,st_i2c_probe,of_clk_get_by_name
+8,ingenic_register_clock,of_clk_get_by_name
+9,load_one_timing_from_dt,of_clk_get_by_name

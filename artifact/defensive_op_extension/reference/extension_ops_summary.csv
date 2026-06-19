@@ -1,0 +1,5 @@
+seed_defensive_op,expanded_manifest_source,expanded_defensive_ops,seed_present,wrapper_defensive_ops_from_manifest,wrapper_defensive_ops_in_paper,inferred_patterns_in_paper,notes
+kfree,packaged expanded-operation manifest,6302,yes,6301,6301,334,
+of_node_put,packaged expanded-operation manifest,29,yes,28,28,1,
+clk_put,packaged expanded-operation manifest,32,yes,31,31,12,
+kref_put,packaged expanded-operation manifest,1583,yes,1582,1583,388,paper Table 11 follows the historical aggregation count for kref_put; the manifest contains the seed plus 1582 discovered wrappers

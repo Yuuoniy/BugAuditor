@@ -1,0 +1,102 @@
+[
+  {
+    "func_name": "jbd2_journal_start_thread",
+    "var": "t",
+    "model": "gpt-4o-mini",
+    "llm_output": {
+      "security_sensitive_behaviors": "When kthread_run creates a new thread for t, it creates a risk of null pointer dereference because kthread_run may return an error pointer if thread creation fails.",
+      "defensive_behaviors": "The err-ptr-check is executed after the thread creation to prevent null pointer dereference by checking if t is an error pointer before proceeding.",
+      "analysis": "When kthread_run creates a new thread for t, it creates a risk of null pointer dereference because kthread_run may return an error pointer if thread creation fails.",
+      "critical_calls": null
+    },
+    "llm_input": {
+      "var_statements": [
+        {
+          "func": "kthread_run",
+          "stmt": "t = kthread_run(kjournald2, journal, \"jbd2/%s\", journal->j_devname);"
+        },
+        {
+          "func": "err-ptr-check_check",
+          "stmt": "if (IS_ERR(t)) return PTR_ERR(t);"
+        }
+      ],
+      "code_slice": "static int jbd2_journal_start_thread(journal_t *journal)\n{\n\tstruct task_struct *t;\n\n\tt = kthread_run(kjournald2, journal, \"jbd2/%s\",\n\t\t\tjournal->j_devname);\n\tif (IS_ERR(t))\n\t\treturn PTR_ERR(t);\n\n\twait_event(journal->j_wait_done_commit, journal->j_task != NULL);\n\treturn 0;\n}",
+      "function": "static int jbd2_journal_start_thread(journal_t *journal)\n{\n\tstruct task_struct *t;\n\n\tt = kthread_run(kjournald2, journal, \"jbd2/%s\",\n\t\t\tjournal->j_devname);\n\tif (IS_ERR(t))\n\t\treturn PTR_ERR(t);\n\n\twait_event(journal->j_wait_done_commit, journal->j_task != NULL);\n\treturn 0;\n}"
+    }
+  },
+  {
+    "func_name": "ice_ptp_init_work",
+    "var": "kworker",
+    "model": "gpt-4o-mini",
+    "llm_output": {
+      "security_sensitive_behaviors": "When kthread_run_worker allocates a kworker for handling work required for the ports connected to the PTP hardware clock, it creates a null pointer dereference risk because kworker may fail to allocate and return an error pointer.",
+      "defensive_behaviors": "The err-ptr-check is executed after the kthread_run_worker call to prevent null pointer dereference by checking if kworker is an error pointer before proceeding.",
+      "analysis": "When kthread_run_worker allocates a kworker for handling work required for the ports connected to the PTP hardware clock, it creates a null pointer dereference risk because kworker may fail to allocate and return an error pointer.",
+      "critical_calls": null
+    },
+    "llm_input": {
+      "var_statements": [
+        {
+          "func": "kthread_run_worker",
+          "stmt": "kworker = kthread_run_worker(0, \"ice-ptp-%s\", dev_name(ice_pf_to_dev(pf)));"
+        },
+        {
+          "func": "err-ptr-check_check",
+          "stmt": "if (IS_ERR(kworker)) return PTR_ERR(kworker);"
+        }
+      ],
+      "code_slice": "static int ice_ptp_init_work(struct ice_pf *pf, struct ice_ptp *ptp)\n{\n\tstruct kthread_worker *kworker;\n\n\t/* Initialize work functions */\n\tkthread_init_delayed_work(&ptp->work, ice_ptp_periodic_work);\n\n\t/* Allocate a kworker for handling work required for the ports\n\t * connected to the PTP hardware clock.\n\t */\n\tkworker = kthread_run_worker(0, \"ice-ptp-%s\",\n\t\t\t\t\tdev_name(ice_pf_to_dev(pf)));\n\tif (IS_ERR(kworker))\n\t\treturn PTR_ERR(kworker);\n\n\tptp->kworker = kworker;\n\n\t/* Start periodic work going */\n\tkthread_queue_delayed_work(ptp->kworker, &ptp->work, 0);\n\n\treturn 0;\n}",
+      "function": "static int ice_ptp_init_work(struct ice_pf *pf, struct ice_ptp *ptp)\n{\n\tstruct kthread_worker *kworker;\n\n\t/* Initialize work functions */\n\tkthread_init_delayed_work(&ptp->work, ice_ptp_periodic_work);\n\n\t/* Allocate a kworker for handling work required for the ports\n\t * connected to the PTP hardware clock.\n\t */\n\tkworker = kthread_run_worker(0, \"ice-ptp-%s\",\n\t\t\t\t\tdev_name(ice_pf_to_dev(pf)));\n\tif (IS_ERR(kworker))\n\t\treturn PTR_ERR(kworker);\n\n\tptp->kworker = kworker;\n\n\t/* Start periodic work going */\n\tkthread_queue_delayed_work(ptp->kworker, &ptp->work, 0);\n\n\treturn 0;\n}"
+    }
+  },
+  {
+    "func_name": "erofs_init_percpu_worker",
+    "var": "worker",
+    "model": "gpt-4o-mini",
+    "llm_output": {
+      "security_sensitive_behaviors": "When kthread_run_worker_on_cpu allocates a worker on cpu, it creates a risk of null pointer dereference because kthread_run_worker_on_cpu may return an error pointer if it fails to create the worker.",
+      "defensive_behaviors": "The err-ptr-check is executed after the allocation to prevent null pointer dereference by returning early if the worker is an error pointer.",
+      "analysis": "When kthread_run_worker_on_cpu allocates a worker on cpu, it creates a risk of null pointer dereference because kthread_run_worker_on_cpu may return an error pointer if it fails to create the worker.",
+      "critical_calls": null
+    },
+    "llm_input": {
+      "var_statements": [
+        {
+          "func": "kthread_run_worker_on_cpu",
+          "stmt": "struct kthread_worker *worker = kthread_run_worker_on_cpu(cpu, 0, \"erofs_worker/%u\");"
+        },
+        {
+          "func": "err-ptr-check_check",
+          "stmt": "if (IS_ERR(worker)) return worker;"
+        }
+      ],
+      "code_slice": "static struct kthread_worker *erofs_init_percpu_worker(int cpu)\n{\n\tstruct kthread_worker *worker =\n\t\tkthread_run_worker_on_cpu(cpu, 0, \"erofs_worker/%u\");\n\n\tif (IS_ERR(worker))\n\t\treturn worker;\n\tif (IS_ENABLED(CONFIG_EROFS_FS_PCPU_KTHREAD_HIPRI))\n\t\tsched_set_fifo_low(worker->task);\n\treturn worker;\n}",
+      "function": "static struct kthread_worker *erofs_init_percpu_worker(int cpu)\n{\n\tstruct kthread_worker *worker =\n\t\tkthread_run_worker_on_cpu(cpu, 0, \"erofs_worker/%u\");\n\n\tif (IS_ERR(worker))\n\t\treturn worker;\n\tif (IS_ENABLED(CONFIG_EROFS_FS_PCPU_KTHREAD_HIPRI))\n\t\tsched_set_fifo_low(worker->task);\n\treturn worker;\n}"
+    }
+  },
+  {
+    "func_name": "on_all_cpus",
+    "var": "k",
+    "model": "gpt-4o-mini",
+    "llm_output": {
+      "security_sensitive_behaviors": "When kthread_run_on_cpu creates a new thread with k, it creates a null pointer dereference risk because kthread_run_on_cpu may return an error pointer if it fails to create the thread.",
+      "defensive_behaviors": "The err-ptr-check is executed after the thread creation to prevent null pointer dereference by checking if k is an error pointer before proceeding.",
+      "analysis": "When kthread_run_on_cpu creates a new thread with k, it creates a null pointer dereference risk because kthread_run_on_cpu may return an error pointer if it fails to create the thread.",
+      "critical_calls": null
+    },
+    "llm_input": {
+      "var_statements": [
+        {
+          "func": "kthread_run_on_cpu",
+          "stmt": "struct task_struct *k = kthread_run_on_cpu(bstrap_fn, &bstrap, cpu, \"hotpotato%d\");"
+        },
+        {
+          "func": "err-ptr-check_check",
+          "stmt": "if (IS_ERR(k)) return -ENOMEM;"
+        }
+      ],
+      "code_slice": "static int on_all_cpus(int (*fn)(void))\n{\n\tint cpu;\n\n\tfor_each_online_cpu(cpu) {\n\t\tstruct bstrap bstrap = {\n\t\t\t.fn = fn,\n\t\t\t.started = ATOMIC_INIT(0)\n\t\t};\n\t\tstruct task_struct *k = kthread_run_on_cpu(bstrap_fn, &bstrap,\n\t\t\t\t\t\t\t   cpu, \"hotpotato%d\");\n\t\tint ret;\n\n\t\tif (IS_ERR(k))\n\t\t\treturn -ENOMEM;\n\t\t/*\n\t\t * If we call kthread_stop() before the \"wake up\" has had an\n\t\t * effect, then the thread may exit with -EINTR without ever\n\t\t * running the function. So poll until it's started before\n\t\t * requesting it to stop.\n\t\t */\n\t\twhile (!atomic_read(&bstrap.started))\n\t\t\tmsleep(20);\n\t\tret = kthread_stop(k);\n\t\tif (ret)\n\t\t\treturn ret;\n\t}\n\treturn 0;\n}",
+      "function": "static int on_all_cpus(int (*fn)(void))\n{\n\tint cpu;\n\n\tfor_each_online_cpu(cpu) {\n\t\tstruct bstrap bstrap = {\n\t\t\t.fn = fn,\n\t\t\t.started = ATOMIC_INIT(0)\n\t\t};\n\t\tstruct task_struct *k = kthread_run_on_cpu(bstrap_fn, &bstrap,\n\t\t\t\t\t\t\t   cpu, \"hotpotato%d\");\n\t\tint ret;\n\n\t\tif (IS_ERR(k))\n\t\t\treturn -ENOMEM;\n\t\t/*\n\t\t * If we call kthread_stop() before the \"wake up\" has had an\n\t\t * effect, then the thread may exit with -EINTR without ever\n\t\t * running the function. So poll until it's started before\n\t\t * requesting it to stop.\n\t\t */\n\t\twhile (!atomic_read(&bstrap.started))\n\t\t\tmsleep(20);\n\t\tret = kthread_stop(k);\n\t\tif (ret)\n\t\t\treturn ret;\n\t}\n\treturn 0;\n}"
+    }
+  }
+]

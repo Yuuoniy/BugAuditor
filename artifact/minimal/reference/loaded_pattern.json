@@ -1,0 +1,11 @@
+{
+  "name": "clk_put:berlin2q_clock_setup",
+  "source_func": "berlin2q_clock_setup",
+  "source_defensive_op": "clk_put",
+  "security_sensitive_behaviors": [
+    "When of_clk_get_by_name acquires a clock reference for clk, it creates a reference leak risk because the clock reference must be released after use to avoid resource exhaustion."
+  ],
+  "defensive_behaviors": [
+    "The clk_put is executed after __clk_get_name uses clk to prevent clock reference leak by releasing the acquired clock reference."
+  ]
+}
