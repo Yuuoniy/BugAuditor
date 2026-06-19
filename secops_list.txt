@@ -1,7 +1,0 @@
-null-ptr-check
-kfree
-of_node_put
-clk_put
-negative-check
-memset
-err-ptr-check
