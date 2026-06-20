@@ -1,0 +1,21 @@
+case_id,buggy_function,source_path,reference_function,security_sensitive_operation,defensive_operation,pattern_id,detection_note
+P01,ksmbd_crypt_message,fs/smb/server/auth.c,libipw_ccmp_decrypt,aead_request_alloc,aead_request_free,PAT01,detected missing-defense case from recorded audit
+P02,sti_gdp_init,drivers/gpu/drm/sti/sti_gdp.c,v3d_platform_drm_probe,dma_alloc_wc,dma_free_wc,PAT02,detected missing-defense case from recorded audit
+P03,oaktrail_hdmi_setup,drivers/gpu/drm/gma500/oaktrail_hdmi.c,cavium_ptp_get,pci_get_device,pci_dev_put,PAT03,detected missing-defense case from recorded audit
+P04,mtk_pericfg_init,drivers/clk/mediatek/clk-mt7629.c,clk_mt8196_apmixed_probe,mtk_alloc_clk_data,mtk_free_clk_data,PAT04,detected missing-defense case from recorded audit
+P05,snow_probe,sound/soc/samsung/snow.c,lpc32xx_clocksource_init,of_clk_get_by_name,clk_put,PAT05,detected missing-defense case from recorded audit
+P06,mtk_dp_dt_parse,drivers/gpu/drm/mediatek/mtk_dp.c,chipone_dsi_host_attach,of_graph_get_endpoint_by_regs,of_node_put,PAT06,detected missing-defense case from recorded audit
+P07,cs35l56_hda_read_acpi,sound/pci/hda/cs35l56_hda.c,,acpi_dev_get_first_match_dev,acpi_dev_put,PAT07,detected missing-defense case from recorded audit
+P08,iso_listen_bis,net/bluetooth/iso.c,,hci_get_route,hci_dev_put,PAT08,detected missing-defense case from recorded audit
+P09,fhci_create_ep,drivers/usb/host/fhci-tds.c,,cpm_muram_alloc,cpm_muram_free,PAT09,detected missing-defense case from recorded audit
+P10,slave_show,drivers/spi/spi.c,,device_find_any_child,put_device,PAT10,detected missing-defense case from recorded audit
+P11,iscsi_set_host_param,drivers/scsi/scsi_transport_iscsi.c,,scsi_host_lookup,scsi_host_put,PAT11,detected missing-defense case from recorded audit
+P12,nforce2_fsb_read,drivers/cpufreq/cpufreq-nforce2.c,,pci_get_subsys,pci_dev_put,PAT12,detected missing-defense case from recorded audit
+P13,mptspi_write_spi_device_pg1,drivers/message/fusion/mptspi.c,,scsi_device_lookup_by_target,scsi_device_put,PAT13,detected missing-defense case from recorded audit
+P14,mt798x_phy_calibration,drivers/net/phy/mediatek-ge-soc.c,,nvmem_cell_get,nvmem_cell_put,PAT14,detected missing-defense case from recorded audit
+P15,loongson_card_parse_acpi,sound/soc/loongson/loongson_card.c,,acpi_get_first_physical_node,put_device,PAT15,detected missing-defense case from recorded audit
+P16,mtk_vcodec_fw_scp_init,drivers/media/platform/mediatek/vcodec/common/mtk_vcodec_fw_scp.c,,scp_get,scp_put,PAT16,detected missing-defense case from recorded audit
+P17,fsl_re_chan_probe,drivers/dma/fsl_raid.c,,of_platform_device_create,platform_device_put,PAT17,detected missing-defense case from recorded audit
+P18,oaktrail_lvds_init,drivers/gpu/drm/gma500/oaktrail_lvds.c,,i2c_get_adapter,i2c_put_adapter,PAT18,detected missing-defense case from recorded audit
+P19,agp_serverworks_probe,drivers/char/agp/sworks-agp.c,,pci_get_domain_bus_and_slot,pci_dev_put,PAT19,detected missing-defense case from recorded audit
+P20,am33xx_pm_rtc_setup,drivers/soc/ti/pm33xx.c,,of_find_node_by_name,of_node_put,PAT20,detected missing-defense case from recorded audit

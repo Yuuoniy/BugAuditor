@@ -29,8 +29,6 @@ We also provide additional extension experiments (defensive operation extensibil
   - [Reproduced Reduced-Scale Evaluation](#reproduced-reduced-scale-evaluation)
     - [Defensive Pattern Reasoning](#defensive-pattern-reasoning)
     - [Bug Auditing](#bug-auditing)
-  - [Extension Experiments](#extension-experiments)
-    - [1. Extensibility analysis.](#1-extensibility-analysis)
     - [2. Generalizability Study](#2-generalizability-study)
   - [Data for Paper Tables and Figures](#data-for-paper-tables-and-figures)
 
@@ -204,24 +202,39 @@ The benchmark includes 20 bug candidates for validation. We only provide a subse
 
 
 **Input files:**
-- `defensive_patterns.csv` — a compact set of pre-obtained defensive patterns
-- Corresponding `.parsed.json` pattern files
+- `defensive_patterns.csv` — pre-inferred defensive patterns
+- `detected_bug_reports.json` — 20 detected benchmark bugs used for the overlap check
 
 **Run.**
 ```bash
 bash artifact/r_bug_auditing/run.sh
 ```
 
-The default settings are already in the script: audit up to 10 comparable functions per pattern and use 8 workers. You can override them with two optional arguments, `<per_pattern_audit_limit> <workers>`. The per-pattern limit must be at least 10.
-The results should detect most known bugs in the benchmark, with minor variation possible because the audit uses an LLM.
 
+The default settings are in the script: audit up to 10 comparable functions per pattern and use 8 workers. You can override them with two optional arguments:
+
+```bash
+bash artifact/r_bug_auditing/run.sh <per_pattern_audit_limit> <workers>
+```
+
+The per-pattern limit must be at least 10.
+The results should detect most known bugs in the benchmark, with minor variation possible because the audit uses an LLM. This may also catch new bugs beyond the benchamrk.
+
+For a quick packaged-output check without LLM calls:
+
+```bash
+
+bash artifact/r_bug_auditing/run.sh --reference
+```
 
 **Result.** The results are saved in the `artifact/results/r_bug_auditing/` directory. The key outputs are:
 
-| File                       | Description                                     |
-| -------------------------- | ----------------------------------------------- |
-| `bug_reports.json`         | Bug reports for provided cases.                 |
-| `bug_auditing_results.csv` | Overall audit verdicts for selected candidates. |
+| File                       | Description                                                                         |
+| -------------------------- | ----------------------------------------------------------------------------------- |
+| `bug_reports.json`         | Bug reports for provided cases.                                                     |
+| `exact_audit_results.json` | Raw live LLM audit results for all selected candidates. Produced by live runs only. |
+| `bug_auditing_results.csv` | Overall audit verdicts for selected candidates.                                     |
+| `detected_bug_overlap.csv` | Overlap between  benchmark bugs and generated reports.                              |
 
 Example report: 
 ```json
@@ -234,6 +247,8 @@ Example report:
     },
 ```
 
+**Execution time.** The packaged reference live run took about 185 seconds and used about 0.33M tokens.
+```
 
 
 **Execution time.** A few mins and token cost.

@@ -58,6 +58,37 @@ def normalize_detected_bug(output):
     return "unknown"
 
 
+def audit_status(output):
+    verdict = output.get("verdict")
+    if verdict == "source_not_found":
+        return "source_not_found"
+    if verdict == "error" or output.get("error"):
+        return "llm_error"
+    return "completed"
+
+
+def source_not_found_output(pattern, row):
+    return {
+        "func_name": row.get("candidate_function"),
+        "reference_func": pattern.source_func,
+        "reference_defensive_op": pattern.source_defensive_op,
+        "pattern_security_behaviors": pattern.security_sensitive_behaviors,
+        "pattern_defensive_behaviors": pattern.defensive_behaviors,
+        "verdict": "source_not_found",
+        "consistent": None,
+        "missing_defenses": [],
+        "bug_explanation": "source code was not found; audit skipped",
+        "needs_more_context": False,
+        "requested_functions": [],
+        "source_found": False,
+        "source_path": "",
+        "prompt_tokens": 0,
+        "response_tokens": 0,
+        "total_tokens": 0,
+        "token_estimated": False,
+    }
+
+
 def extract_function_from_text(text, func_name):
     pattern = re.compile(r"\b" + re.escape(func_name) + r"\s*\(", re.M)
     for match in pattern.finditer(text):
@@ -145,6 +176,7 @@ def main():
     parser.add_argument("--output-json", required=True, help="path to write detailed JSON results")
     parser.add_argument("--output-csv", required=True, help="path to write compact CSV results")
     parser.add_argument("--repo", default="linux", help="repo key from config.json")
+    parser.add_argument("--source-dir", help="override source tree path")
     parser.add_argument("--patterns", help="reference defensive_patterns.csv used as pattern input")
     parser.add_argument("--workers", type=int, default=8, help="parallel workers within each pattern group")
     parser.add_argument("--llm-model", help="override LLM model")
@@ -156,7 +188,7 @@ def main():
     patterns_by_id = read_patterns(args.patterns)
 
     cfg = load_config()
-    source_dir = Path(cfg["program_paths"][args.repo])
+    source_dir = Path(args.source_dir or cfg["program_paths"][args.repo])
 
     groups = defaultdict(list)
     for row in rows:
@@ -171,11 +203,30 @@ def main():
         reference_func = next((r["reference_function"] for r in case_rows if r.get("reference_function")), "")
         pattern_row = patterns_by_id.get(case_rows[0].get("pattern_id", ""))
         pattern = build_pattern(sec_op, defensive_op, reference_func, pattern_row)
+
+        pattern_id = case_rows[0].get("pattern_id", "")
+        detected_case_count = sum(1 for r in case_rows if r.get("expected") == "bug")
+        print(
+            "[ae] auditing pattern {pid}: {sec} -> {defop}; "
+            "{total} candidates ({detected} detected bug cases)".format(
+                pid=pattern_id,
+                sec=sec_op,
+                defop=defensive_op,
+                total=len(case_rows),
+                detected=detected_case_count,
+            )
+        )
+
+        outputs = [None] * len(case_rows)
         candidates = []
-        for row in case_rows:
+        candidate_indexes = []
+        for idx, row in enumerate(case_rows):
             code, path = find_function_source(source_dir, row["candidate_function"])
             if not code:
                 print(f"[warn] source not found for {row['candidate_function']}")
+                outputs[idx] = source_not_found_output(pattern, row)
+                continue
+            candidate_indexes.append(idx)
             candidates.append(
                 {
                     "func_name": row["candidate_function"],
@@ -183,13 +234,21 @@ def main():
                     "function": code,
                 }
             )
-        outputs = auditor.audit(
-            pattern,
-            candidates,
-            llm_model=args.llm_model,
-            timeout=args.llm_timeout,
-            workers=args.workers,
-        )
+        if candidates:
+            audit_outputs = auditor.audit(
+                pattern,
+                candidates,
+                llm_model=args.llm_model,
+                timeout=args.llm_timeout,
+                workers=args.workers,
+            )
+            for idx, candidate, output in zip(candidate_indexes, candidates, audit_outputs):
+                output["source_found"] = True
+                output["source_path"] = candidate["path"]
+                outputs[idx] = output
+        else:
+            print(f"[ae] skipped pattern {pattern_id}: no candidate source was found")
+
         for row, output in zip(case_rows, outputs):
             detected_bug = normalize_detected_bug(output)
             expected = row.get("expected", "")
@@ -214,10 +273,14 @@ def main():
             compact.append(
                 {
                     "case_id": row["case_id"],
+                    "pattern_id": row.get("pattern_id", ""),
                     "expected": row["expected"],
+                    "candidate_role": row.get("candidate_role", ""),
                     "candidate_function": row["candidate_function"],
                     "security_sensitive_operation": sec_op,
                     "defensive_operation": defensive_op,
+                    "source_path": output.get("source_path", ""),
+                    "audit_status": audit_status(output),
                     "verdict": output.get("verdict"),
                     "consistent": output.get("consistent"),
                     "detected_bug": detected_bug,
@@ -235,10 +298,14 @@ def main():
             f,
             fieldnames=[
                 "case_id",
+                "pattern_id",
                 "expected",
+                "candidate_role",
                 "candidate_function",
                 "security_sensitive_operation",
                 "defensive_operation",
+                "source_path",
+                "audit_status",
                 "verdict",
                 "consistent",
                 "detected_bug",

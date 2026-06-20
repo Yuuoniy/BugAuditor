@@ -57,11 +57,11 @@ def function_calls(code: str, call_name: str) -> bool:
     return bool(re.search(r"\b" + re.escape(call_name) + r"\s*\(", code or ""))
 
 
-def confirmed_bug_rows(confirmed_path: Path) -> list[dict[str, str]]:
+def detected_bug_rows(detected_path: Path) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     seen: set[tuple[str, str]] = set()
 
-    for row in read_csv(confirmed_path):
+    for row in read_csv(detected_path):
         key = (row["buggy_function"], row["pattern_id"])
         seen.add(key)
         rows.append({
@@ -71,8 +71,8 @@ def confirmed_bug_rows(confirmed_path: Path) -> list[dict[str, str]]:
             "reference_function": row.get("reference_function", ""),
             "security_sensitive_operation": row["security_sensitive_operation"],
             "defensive_operation": row["defensive_operation"],
-            "source": "confirmed_bugs.csv",
-            "note": row.get("confirmation", ""),
+            "source": "detected_bugs.csv",
+            "note": row.get("detection_note") or row.get("confirmation", ""),
         })
 
     return rows
@@ -89,12 +89,12 @@ def located_candidates(source_dir: Path, call_name: str) -> list[dict[str, str]]
 def build_plan(
     source_dir: Path,
     patterns: list[dict[str, str]],
-    confirmed_rows: list[dict[str, str]],
+    detected_rows: list[dict[str, str]],
     per_pattern_limit: int,
 ) -> list[dict[str, object]]:
-    confirmed_by_pattern: dict[str, list[dict[str, str]]] = {}
-    for row in confirmed_rows:
-        confirmed_by_pattern.setdefault(row["pattern_id"], []).append(row)
+    detected_by_pattern: dict[str, list[dict[str, str]]] = {}
+    for row in detected_rows:
+        detected_by_pattern.setdefault(row["pattern_id"], []).append(row)
 
     plan_rows: list[dict[str, object]] = []
     for pattern in patterns:
@@ -105,11 +105,11 @@ def build_plan(
         candidate_by_name = {row["func_name"]: row for row in candidates}
         candidate_names = set(candidate_by_name)
 
-        confirmed = confirmed_by_pattern.get(pattern_id, [])
-        target_count = max(per_pattern_limit, len(confirmed))
+        detected = detected_by_pattern.get(pattern_id, [])
+        target_count = max(per_pattern_limit, len(detected))
         selected_names: set[str] = set()
 
-        for bug in confirmed:
+        for bug in detected:
             code, path = find_function_source(source_dir, bug["candidate_function"])
             present = bug["candidate_function"] in candidate_names
             if not present and function_calls(code, call_name):
@@ -125,7 +125,7 @@ def build_plan(
                 "defensive_operation": defensive_op,
                 "source": bug["source"],
                 "note": bug.get("note", ""),
-                "candidate_role": "confirmed_bug",
+                "candidate_role": "detected_bug",
                 "candidate_present": "yes" if present else "no",
                 "candidate_path": source_path(source_dir, bug["candidate_function"]) or path,
                 "located_comparable_functions": len(candidates),
@@ -156,10 +156,10 @@ def build_plan(
             })
 
         print(
-            "[ae] pattern {pid}: confirmed={confirmed}, selected={selected}, "
+            "[ae] pattern {pid}: detected_bugs={detected}, selected={selected}, "
             "located_comparable={located}, cap={cap}".format(
                 pid=pattern_id,
-                confirmed=len(confirmed),
+                detected=len(detected),
                 selected=len(selected_names),
                 located=len(candidates),
                 cap=target_count,
@@ -174,7 +174,7 @@ def main() -> None:
         description="Build per-pattern comparable-function audit candidates for reproduced bug auditing."
     )
     parser.add_argument("--patterns", required=True, help="defensive_patterns.csv")
-    parser.add_argument("--confirmed-bugs", required=True, help="confirmed_bugs.csv")
+    parser.add_argument("--detected-bugs", required=True, help="detected_bugs.csv")
     parser.add_argument("--output-csv", required=True, help="candidate plan CSV")
     parser.add_argument("--repo", default="linux", help="repo key from config.json")
     parser.add_argument("--source-dir", help="override source tree path")
@@ -187,8 +187,8 @@ def main() -> None:
     cfg = load_config()
     source_dir = Path(args.source_dir or cfg["program_paths"][args.repo])
     patterns = read_csv(Path(args.patterns))
-    confirmed = confirmed_bug_rows(Path(args.confirmed_bugs))
-    rows = build_plan(source_dir, patterns, confirmed, args.per_pattern_limit)
+    detected = detected_bug_rows(Path(args.detected_bugs))
+    rows = build_plan(source_dir, patterns, detected, args.per_pattern_limit)
 
     fieldnames = [
         "case_id",
@@ -207,11 +207,11 @@ def main() -> None:
         "per_pattern_limit",
     ]
     write_csv(Path(args.output_csv), rows, fieldnames)
-    confirmed_count = sum(1 for row in rows if row["candidate_role"] == "confirmed_bug")
+    detected_count = sum(1 for row in rows if row["candidate_role"] == "detected_bug")
     random_count = sum(1 for row in rows if row["candidate_role"] == "random_comparable")
     print(
         "[ae] wrote audit candidate plan: "
-        f"{len(rows)} candidates ({confirmed_count} confirmed bugs, {random_count} random comparable)"
+        f"{len(rows)} candidates ({detected_count} detected bugs, {random_count} random comparable)"
     )
     print(f"[ae] candidate plan: {args.output_csv}")
 

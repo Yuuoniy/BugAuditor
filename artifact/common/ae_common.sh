@@ -65,6 +65,7 @@ ae_need_config() {
 ae_config_value() {
   local repo_root="$1"
   local dotted_key="$2"
+  local config_path="${BUGAUDITOR_CONFIG:-${repo_root}/config.json}"
   python3 -c '
 import json
 import sys
@@ -82,7 +83,7 @@ if cur is None:
     print("")
 else:
     print(cur)
-' "${repo_root}/config.json" "${dotted_key}"
+' "${config_path}" "${dotted_key}"
 }
 
 ae_need_source_path() {

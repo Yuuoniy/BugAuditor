@@ -1,225 +1,671 @@
 {
-  "total_reports": 20,
+  "total_reports": 51,
+  "additional_comparable_reports": 31,
   "items": [
     {
       "case_id": "P01",
       "buggy_function": "ksmbd_crypt_message",
+      "expected": "bug",
       "pattern_id": "PAT01",
       "security_sensitive_operation": "aead_request_alloc",
       "defensive_operation": "aead_request_free",
+      "source_path": "fs/smb/server/auth.c",
       "missing_defenses": [
         "aead_request_free"
       ],
-      "bug_explanation": "The function calls aead_request_alloc() to allocate a request, but on error paths (e.g., when ksmbd_init_sg fails or kzalloc fails) it uses kfree(req) instead of aead_request_free(req). This is a resource leak because aead_request_alloc returns a structure that must be freed with aead_request_free, not kfree. The resource does not escape the function; it remains local and is not returned or stored externally. Therefore, the missing aead_request_free on those error paths is a real bug."
+      "bug_explanation": "The function allocates aead_request via aead_request_alloc() but frees it with kfree() instead of the required aead_request_free(). This is a type mismatch that can lead to memory corruption or improper cleanup because aead_request_alloc may allocate from a different slab or include additional metadata that kfree does not handle correctly."
+    },
+    {
+      "case_id": "PAT01-R04",
+      "buggy_function": "setup_crypto",
+      "expected": "unknown",
+      "pattern_id": "PAT01",
+      "security_sensitive_operation": "aead_request_alloc",
+      "defensive_operation": "aead_request_free",
+      "source_path": "net/ceph/messenger_v2.c",
+      "missing_defenses": [
+        "aead_request_free on error path after aead_request_alloc"
+      ],
+      "bug_explanation": "The function allocates con->v2.gcm_req via aead_request_alloc, but on subsequent errors (e.g., crypto_aead_setkey, crypto_aead_setauthsize failures) it returns without calling aead_request_free, causing a memory leak. The allocated request is stored in a connection struct (escapes the function), but the error path does not release it before returning an error, leaving the connection in an inconsistent state with a dangling pointer. The resource is not freed on error paths after successful allocation."
     },
     {
       "case_id": "P02",
       "buggy_function": "sti_gdp_init",
+      "expected": "bug",
       "pattern_id": "PAT02",
       "security_sensitive_operation": "dma_alloc_wc",
       "defensive_operation": "dma_free_wc",
+      "source_path": "drivers/gpu/drm/sti/sti_gdp.c",
       "missing_defenses": [
         "dma_free_wc on error paths after successful allocation"
       ],
-      "bug_explanation": "The function calls dma_alloc_wc to allocate DMA memory and stores the base address in local variables. On several error paths (alignment check failures and the default case in the switch), the function returns without calling dma_free_wc, causing a memory leak. The allocated memory does not escape the function (it is stored in gdp->node_list, but gdp is a caller-provided structure, so ownership remains with the caller; however, on error paths the function returns early without releasing the resource, which is a bug)."
+      "bug_explanation": "The function calls dma_alloc_wc to allocate DMA memory and stores the base address and dma_addr in gdp->node_list entries. However, on the error paths after the allocation (e.g., alignment checks and the default case in the switch), the function returns without calling dma_free_wc, causing a memory leak. The allocated memory escapes the function only via the gdp structure, but since the function returns an error, the caller may not use the gdp properly, and the cleanup is missing."
+    },
+    {
+      "case_id": "PAT02-R01",
+      "buggy_function": "acornfb_probe",
+      "expected": "unknown",
+      "pattern_id": "PAT02",
+      "security_sensitive_operation": "dma_alloc_wc",
+      "defensive_operation": "dma_free_wc",
+      "source_path": "drivers/video/fbdev/acornfb.c",
+      "missing_defenses": [
+        "dma_free_wc on error path after dma_alloc_wc succeeds"
+      ],
+      "bug_explanation": "The function calls dma_alloc_wc to allocate DMA-coherent memory for the framebuffer. If subsequent operations fail (e.g., fb_find_mode returns 0, or register_framebuffer fails), the function returns an error without calling dma_free_wc to release the allocated memory. This results in a memory leak. The allocated memory is stored in fb_info.screen_base and fb_info.fix.smem_start, which are local to the probe function and not released on these error paths."
+    },
+    {
+      "case_id": "PAT02-R07",
+      "buggy_function": "copy_gathers",
+      "expected": "unknown",
+      "pattern_id": "PAT02",
+      "security_sensitive_operation": "dma_alloc_wc",
+      "defensive_operation": "dma_free_wc",
+      "source_path": "drivers/gpu/host1x/job.c",
+      "missing_defenses": [
+        "dma_free_wc on error path after successful dma_alloc_wc"
+      ],
+      "bug_explanation": "The function calls dma_alloc_wc successfully and stores the result in job->gather_copy_mapped. On subsequent error paths (validate failure or remaining relocs), the function returns -EINVAL without calling dma_free_wc to release the DMA buffer. This leaks the allocated DMA memory. The resource is stored in job->gather_copy_mapped, which escapes the function via the job struct, but the function returns an error, so the caller may not know to free it or may not free it on this error path. The missing cleanup on error paths is a real bug."
     },
     {
       "case_id": "P03",
       "buggy_function": "oaktrail_hdmi_setup",
+      "expected": "bug",
       "pattern_id": "PAT03",
       "security_sensitive_operation": "pci_get_device",
       "defensive_operation": "pci_dev_put",
+      "source_path": "drivers/gpu/drm/gma500/oaktrail_hdmi.c",
       "missing_defenses": [
         "pci_dev_put on error path after pci_get_device success"
       ],
-      "bug_explanation": "The function calls pci_get_device, which increments the reference count of the pci_dev. On the error paths (goto free and goto out), the function returns without calling pci_dev_put, causing a reference leak. The pdev is stored in hdmi_dev->dev and set as driver data, but on error paths where hdmi_dev is freed (goto free) or not allocated (goto out), the reference is leaked because pdev is not released. Even on the success path, pdev is stored in hdmi_dev->dev, but the function does not release it; however, since the device escapes via dev_priv->hdmi_priv, the reference is expected to be managed elsewhere. The bug is specifically on the error paths where pdev is not put before returning."
+      "bug_explanation": "pci_get_device is called successfully, incrementing the reference count of pdev. On the error paths (goto free and out), the function returns without calling pci_dev_put(pdev), causing a reference leak. The pdev is stored in hdmi_dev->dev only on the success path, but on error paths hdmi_dev is freed or not allocated, so pdev does not escape and must be released locally."
+    },
+    {
+      "case_id": "PAT03-R07",
+      "buggy_function": "init_ichxrom",
+      "expected": "unknown",
+      "pattern_id": "PAT03",
+      "security_sensitive_operation": "pci_get_device",
+      "defensive_operation": "pci_dev_put",
+      "source_path": "drivers/mtd/maps/ichxrom.c",
+      "missing_defenses": [
+        "pci_dev_put on error path"
+      ],
+      "bug_explanation": "The function calls pci_get_device in a loop, which increments the reference count of the returned pci_dev. If the device is found (pdev != NULL), the function calls ichxrom_init_one(pdev, ...) without first releasing the reference via pci_dev_put. The reference is effectively transferred to ichxrom_init_one, but if that function fails or does not properly put the device, the reference is leaked. Additionally, if pdev is found but ichxrom_init_one returns an error, the reference is not released in this function. The function should either put the device before returning or ensure the callee takes ownership. Since the pattern requires paired cleanup and the reference is not released here, this is a bug."
+    },
+    {
+      "case_id": "PAT03-R08",
+      "buggy_function": "pasemi_register_i2c_devices",
+      "expected": "unknown",
+      "pattern_id": "PAT03",
+      "security_sensitive_operation": "pci_get_device",
+      "defensive_operation": "pci_dev_put",
+      "source_path": "arch/powerpc/platforms/pasemi/misc.c",
+      "missing_defenses": [
+        "pci_dev_put on pdev before continue when adap_node is NULL"
+      ],
+      "bug_explanation": "The function calls pci_get_device in a loop, which increments the reference count of the returned pci_dev. When adap_node is NULL, the code uses 'continue' without calling pci_dev_put(pdev), causing a reference leak. This is a real bug because the pdev reference escapes the loop iteration without being released."
     },
     {
       "case_id": "P04",
       "buggy_function": "mtk_pericfg_init",
+      "expected": "bug",
       "pattern_id": "PAT04",
       "security_sensitive_operation": "mtk_alloc_clk_data",
       "defensive_operation": "mtk_free_clk_data",
+      "source_path": "drivers/clk/mediatek/clk-mt7629.c",
       "missing_defenses": [
         "mtk_free_clk_data on error path after mtk_alloc_clk_data succeeds"
       ],
-      "bug_explanation": "The function calls mtk_alloc_clk_data to allocate clk_data. If the subsequent of_clk_add_hw_provider fails, the function returns directly without calling mtk_free_clk_data, causing a memory leak. The allocated clk_data is not freed on this error path."
+      "bug_explanation": "The function calls mtk_alloc_clk_data to allocate clk_data, but if of_clk_add_hw_provider fails (r != 0), the function returns directly without calling mtk_free_clk_data, causing a memory leak. The clk_data is not freed because it is not released on that error path."
+    },
+    {
+      "case_id": "PAT04-R01",
+      "buggy_function": "clk_mt6765_top_probe",
+      "expected": "unknown",
+      "pattern_id": "PAT04",
+      "security_sensitive_operation": "mtk_alloc_clk_data",
+      "defensive_operation": "mtk_free_clk_data",
+      "source_path": "drivers/clk/mediatek/clk-mt6765.c",
+      "missing_defenses": [
+        "mtk_free_clk_data on error path after of_clk_add_hw_provider fails"
+      ],
+      "bug_explanation": "The function calls mtk_alloc_clk_data to allocate clk_data. If of_clk_add_hw_provider fails (r != 0), the function prints an error but does not free clk_data via mtk_free_clk_data, causing a memory leak. The clk_data is not returned or stored in a way that escapes the function (it is only passed to of_clk_add_hw_provider, which does not take ownership on failure), so local cleanup is required."
+    },
+    {
+      "case_id": "PAT04-R06",
+      "buggy_function": "clk_mt6765_apmixed_probe",
+      "expected": "unknown",
+      "pattern_id": "PAT04",
+      "security_sensitive_operation": "mtk_alloc_clk_data",
+      "defensive_operation": "mtk_free_clk_data",
+      "source_path": "drivers/clk/mediatek/clk-mt6765.c",
+      "missing_defenses": [
+        "mtk_free_clk_data on error path after mtk_alloc_clk_data"
+      ],
+      "bug_explanation": "The function calls mtk_alloc_clk_data to allocate clk_data. If of_clk_add_hw_provider fails (r != 0), the function prints an error but does not free clk_data before returning. Since clk_data is not returned or stored in a caller-provided structure (it is only passed to of_clk_add_hw_provider, which does not take ownership on failure), the allocation leaks on this error path. mtk_free_clk_data should be called before returning when r is non-zero."
     },
     {
       "case_id": "P05",
       "buggy_function": "snow_probe",
+      "expected": "bug",
       "pattern_id": "PAT05",
       "security_sensitive_operation": "of_clk_get_by_name",
       "defensive_operation": "clk_put",
+      "source_path": "sound/soc/samsung/snow.c",
       "missing_defenses": [
         "clk_put on error path after of_clk_get_by_name success"
       ],
-      "bug_explanation": "In the 'cpu' branch, of_clk_get_by_name acquires a clock (priv->clk_i2s_bus). If the subsequent devm_snd_soc_register_card fails, the function returns without calling clk_put. The clock is not released because devm_snd_soc_register_card failure does not trigger automatic cleanup of the acquired clock. This is a resource leak bug."
+      "bug_explanation": "The function acquires a clock via of_clk_get_by_name and stores it in priv->clk_i2s_bus. On the subsequent call to devm_snd_soc_register_card, if it fails, the function returns without calling clk_put. Since priv is allocated with devm_kzalloc, the clock is not automatically released; clk_put must be called explicitly. This results in a resource leak on the error path."
+    },
+    {
+      "case_id": "PAT05-R04",
+      "buggy_function": "tsa_of_parse_tdms",
+      "expected": "unknown",
+      "pattern_id": "PAT05",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "defensive_operation": "clk_put",
+      "source_path": "drivers/soc/fsl/qe/tsa.c",
+      "missing_defenses": [
+        "In the err cleanup block, the wrong clock variables are used for l1tsync_clk and l1tclk_clk: l1tsync_clk is cleaned up using l1rsync_clk, and l1tclk_clk is cleaned up using l1rclk_clk."
+      ],
+      "bug_explanation": "The function acquires and stores four clock pointers (l1rsync_clk, l1rclk_clk, l1tsync_clk, l1tclk_clk) in the tsa->tdm[] structure. On error, the err label attempts to release these clocks. However, the cleanup code for l1tsync_clk incorrectly uses l1rsync_clk, and the cleanup for l1tclk_clk incorrectly uses l1rclk_clk. This means the acquired l1tsync_clk and l1tclk_clk are never properly released, while l1rsync_clk and l1rclk_clk may be released twice (double-free). This is a real bug that can cause resource leaks and potential use-after-free or double-free issues."
+    },
+    {
+      "case_id": "PAT05-R05",
+      "buggy_function": "rk_timer_probe",
+      "expected": "unknown",
+      "pattern_id": "PAT05",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "defensive_operation": "clk_put",
+      "source_path": "drivers/clocksource/timer-rockchip.c",
+      "missing_defenses": [
+        "clk_put(timer_clk) before out_irq label",
+        "clk_put(pclk) before out_timer_clk label"
+      ],
+      "bug_explanation": "The function acquires clocks via of_clk_get_by_name but only calls clk_disable_unprepare on error paths, missing clk_put. This leaks the clock references. Specifically, on the out_irq path, timer_clk is disabled but not put; on the out_timer_clk path, pclk is disabled but not put. The clocks are stored in timer->pclk and timer->clk, which are local to the probe and not returned or passed to a framework that takes ownership, so the missing clk_put is a bug."
+    },
+    {
+      "case_id": "PAT05-R07",
+      "buggy_function": "tpm_timer_init",
+      "expected": "unknown",
+      "pattern_id": "PAT05",
+      "security_sensitive_operation": "of_clk_get_by_name",
+      "defensive_operation": "clk_put",
+      "source_path": "drivers/clocksource/timer-imx-tpm.c",
+      "missing_defenses": [
+        "clk_put(ipg) on error path after timer_of_init fails"
+      ],
+      "bug_explanation": "The function acquires 'ipg' clock via of_clk_get_by_name and enables it via clk_prepare_enable. If timer_of_init fails, the function returns without releasing the clock (clk_put and clk_disable_unprepare), causing a resource leak. The clock is not stored in any escaping structure; it remains local and must be released on all error paths."
     },
     {
       "case_id": "P06",
       "buggy_function": "mtk_dp_dt_parse",
+      "expected": "bug",
       "pattern_id": "PAT06",
       "security_sensitive_operation": "of_graph_get_endpoint_by_regs",
       "defensive_operation": "of_node_put",
+      "source_path": "drivers/gpu/drm/mediatek/mtk_dp.c",
       "missing_defenses": [
-        "of_node_put on endpoint before error returns"
+        "of_node_put(endpoint) on error paths and before return"
       ],
-      "bug_explanation": "The function calls of_graph_get_endpoint_by_regs, which returns a reference-counted device node. This node is used to read 'data-lanes' property, but on any error path after the call (including invalid data lane size and failed max-linkrate read), the function returns without calling of_node_put(endpoint). This leaks the reference. The endpoint variable does not escape the function (it is not stored, returned, or passed to any framework that takes ownership), so local cleanup is required."
+      "bug_explanation": "The function calls of_graph_get_endpoint_by_regs, which returns a reference-counted device node. This reference must be released via of_node_put on all paths after successful acquisition. However, the function returns -EINVAL or other errors without calling of_node_put, and also returns 0 without releasing the reference. This causes a reference leak and potential use-after-free if the endpoint is used later without proper reference management."
     },
     {
       "case_id": "P07",
       "buggy_function": "cs35l56_hda_read_acpi",
+      "expected": "bug",
       "pattern_id": "PAT07",
       "security_sensitive_operation": "acpi_dev_get_first_match_dev",
       "defensive_operation": "acpi_dev_put",
+      "source_path": "sound/pci/hda/cs35l56_hda.c",
       "missing_defenses": [
-        "acpi_dev_put(adev) on error paths after successful acpi_dev_get_first_match_dev"
+        "acpi_dev_put(adev) on error paths and before return"
       ],
-      "bug_explanation": "When ACPI_COMPANION is not set, the function calls acpi_dev_get_first_match_dev() and assigns the returned adev to the device via ACPI_COMPANION_SET. However, on subsequent error paths (e.g., property read failures, missing index, or other errors), the function returns without calling acpi_dev_put(adev). This leaks the ACPI device reference. The adev is not returned to the caller; it is stored in the device's ACPI companion, which does not transfer ownership for cleanup. Therefore, the function must release the reference on error exits."
+      "bug_explanation": "The function calls acpi_dev_get_first_match_dev() and assigns the result to adev. When the ACPI_COMPANION is not set, adev is acquired but never released via acpi_dev_put(). The function has multiple error paths (goto err) and a normal return path that do not call acpi_dev_put(). This leads to a reference leak of the ACPI device. The variable adev is local and does not escape the function (it is only used to set ACPI_COMPANION, which does not transfer ownership), so the missing release is a bug."
     },
     {
       "case_id": "P08",
       "buggy_function": "iso_listen_bis",
+      "expected": "bug",
       "pattern_id": "PAT08",
       "security_sensitive_operation": "hci_get_route",
       "defensive_operation": "hci_dev_put",
+      "source_path": "net/bluetooth/iso.c",
       "missing_defenses": [
         "hci_dev_put on error path before unlock"
       ],
-      "bug_explanation": "The function calls hci_get_route which returns a reference to a struct hci_dev. On the error paths after successful acquisition (when hdev is non-NULL), the function jumps to 'unlock' without calling hci_dev_put. This leaks the reference. The only hci_dev_put call is at the end of the success path, but it is missing on all error paths that go through 'unlock'."
+      "bug_explanation": "The function calls hci_get_route which returns a reference to hdev. On the error paths after hdev is acquired (e.g., when check_bcast_qos fails, hci_pa_create_sync fails, or iso_conn_add fails), the function jumps to 'unlock' without calling hci_dev_put, causing a reference leak. The hci_dev_put is only called on the success path before unlock, but missing on error paths."
+    },
+    {
+      "case_id": "PAT08-R02",
+      "buggy_function": "iso_conn_big_sync",
+      "expected": "unknown",
+      "pattern_id": "PAT08",
+      "security_sensitive_operation": "hci_get_route",
+      "defensive_operation": "hci_dev_put",
+      "source_path": "net/bluetooth/iso.c",
+      "missing_defenses": [
+        "hci_dev_put on error path after hci_get_route success"
+      ],
+      "bug_explanation": "hci_get_route returns a reference to hdev that must be released with hci_dev_put. In this function, hdev is obtained but never released before return, causing a reference leak. The variable hdev is local and does not escape the function, so the missing release is a bug."
+    },
+    {
+      "case_id": "PAT08-R05",
+      "buggy_function": "sco_sock_getsockopt",
+      "expected": "unknown",
+      "pattern_id": "PAT08",
+      "security_sensitive_operation": "hci_get_route",
+      "defensive_operation": "hci_dev_put",
+      "source_path": "net/bluetooth/sco.c",
+      "missing_defenses": [
+        "hci_dev_put on error path after hci_get_route success"
+      ],
+      "bug_explanation": "In the BT_CODEC case, hci_get_route is called and returns a non-NULL hdev. Later, inside the loop that iterates over local_codecs, if hdev->get_data_path_id fails or copy_to_user fails, the code breaks out of the loop without calling hci_dev_put(hdev) before returning. The function then proceeds to hci_dev_unlock and hci_dev_put only after the loop, but if err is set, the function returns err without releasing hdev. This results in a reference leak of the hci_dev structure."
     },
     {
       "case_id": "P09",
       "buggy_function": "fhci_create_ep",
+      "expected": "bug",
       "pattern_id": "PAT09",
       "security_sensitive_operation": "cpm_muram_alloc",
       "defensive_operation": "cpm_muram_free",
+      "source_path": "drivers/usb/host/fhci-tds.c",
       "missing_defenses": [
-        "cpm_muram_free on error path when cpm_muram_alloc succeeded"
+        "cpm_muram_free on error path"
       ],
-      "bug_explanation": "When cpm_muram_alloc succeeds (ep_offset is valid) but a subsequent allocation fails (e.g., cq_new or kmalloc), the function jumps to 'err' label which calls fhci_ep0_free(usb) and kfree(ep) but does NOT call cpm_muram_free(ep_offset). This leaks the muram allocation. The resource (ep_offset) is local and not escaped before the error path, so it must be freed."
+      "bug_explanation": "The function calls cpm_muram_alloc to allocate memory and stores the offset in ep_offset. On the error path (goto err), the function does not call cpm_muram_free to release this allocation before returning. This results in a memory leak of the muram resource. The variable ep_offset is local and does not escape; the error path returns -ENOMEM without freeing the muram allocation."
+    },
+    {
+      "case_id": "PAT09-R07",
+      "buggy_function": "fsl_spi_cpm_get_pram",
+      "expected": "unknown",
+      "pattern_id": "PAT09",
+      "security_sensitive_operation": "cpm_muram_alloc",
+      "defensive_operation": "cpm_muram_free",
+      "source_path": "drivers/spi/spi-fsl-cpm.c",
+      "missing_defenses": [
+        "cpm_muram_free on error path after cpm_muram_alloc"
+      ],
+      "bug_explanation": "In the QE dynamic path, cpm_muram_alloc is called and its return value is stored in pram_ofs. If qe_issue_cmd fails (or any subsequent error occurs), the function returns pram_ofs (which may be an error code) without calling cpm_muram_free, leaking the allocated muram. Similarly, in the SPI_CPM2 path, cpm_muram_alloc is called and pram_ofs is used, but if out_be16 fails or the function returns early, the allocated muram is not freed. The resource (pram_ofs) is not returned to the caller as a valid allocation; it is either used locally or returned as an error, so it does not escape. Therefore, missing cleanup on error paths is a bug."
+    },
+    {
+      "case_id": "PAT09-R09",
+      "buggy_function": "qe_ep_bd_init",
+      "expected": "unknown",
+      "pattern_id": "PAT09",
+      "security_sensitive_operation": "cpm_muram_alloc",
+      "defensive_operation": "cpm_muram_free",
+      "source_path": "drivers/usb/gadget/udc/fsl_qe_udc.c",
+      "missing_defenses": [
+        "cpm_muram_free on error path"
+      ],
+      "bug_explanation": "The function calls cpm_muram_alloc to allocate memory for BD rings. If any subsequent operation fails (e.g., out_be16 or out_be32 accesses), the function returns without calling cpm_muram_free, causing a memory leak. The allocated address is stored in ep->rxbase and ep->txbase, which are local to the ep structure owned by the caller, but the function does not release the allocation on error before returning."
     },
     {
       "case_id": "P10",
       "buggy_function": "slave_show",
+      "expected": "bug",
       "pattern_id": "PAT10",
       "security_sensitive_operation": "device_find_any_child",
       "defensive_operation": "put_device",
+      "source_path": "drivers/spi/spi.c",
       "missing_defenses": [
         "put_device(child) before return"
       ],
-      "bug_explanation": "The function calls device_find_any_child, which increments the reference count of the returned device. The function then returns without calling put_device on the child, causing a reference leak. The child variable is local and does not escape, so the release is required."
+      "bug_explanation": "The function calls device_find_any_child, which increments the reference count of the child device. The function then returns without calling put_device on the child, causing a reference leak. The child variable is local and does not escape the function, so the missing put_device is a bug."
     },
     {
       "case_id": "P11",
       "buggy_function": "iscsi_set_host_param",
+      "expected": "bug",
       "pattern_id": "PAT11",
       "security_sensitive_operation": "scsi_host_lookup",
       "defensive_operation": "scsi_host_put",
+      "source_path": "drivers/scsi/scsi_transport_iscsi.c",
       "missing_defenses": [
-        "scsi_host_put on error path after strlen check"
+        "scsi_host_put on the strlen(data) error path"
       ],
-      "bug_explanation": "The function calls scsi_host_lookup, which acquires a reference to the SCSI host. If the subsequent strlen check fails, the function returns -EINVAL without calling scsi_host_put, causing a reference leak. The scsi_host_put is only called after the transport->set_host_param call, but the error path before that is missing the release."
+      "bug_explanation": "scsi_host_lookup is called successfully, but on the error path where strlen(data) > ev->u.set_host_param.len, the function returns -EINVAL without calling scsi_host_put, causing a reference leak."
     },
     {
       "case_id": "P12",
       "buggy_function": "nforce2_fsb_read",
+      "expected": "bug",
       "pattern_id": "PAT12",
       "security_sensitive_operation": "pci_get_subsys",
       "defensive_operation": "pci_dev_put",
+      "source_path": "drivers/cpufreq/cpufreq-nforce2.c",
       "missing_defenses": [
-        "pci_dev_put on nforce2_sub5 before return"
+        "pci_dev_put(nforce2_sub5) before return"
       ],
-      "bug_explanation": "The function calls pci_get_subsys to acquire a reference to a PCI device. If the device is found (non-NULL), the reference must be released via pci_dev_put before every return path. However, the function returns directly without calling pci_dev_put on any of the three return paths (the early return for !nforce2_sub5 is safe because no reference was acquired). This leaks the PCI device reference, which can lead to resource exhaustion or use-after-free issues."
+      "bug_explanation": "The function calls pci_get_subsys, which increments the reference count of the PCI device. The acquired device pointer nforce2_sub5 is used only locally and never returned or stored externally. However, on every return path after successful acquisition, the function fails to call pci_dev_put to release the reference, causing a memory leak. The variable remains local and does not escape, so the missing release is a bug."
+    },
+    {
+      "case_id": "PAT12-R06",
+      "buggy_function": "nforce2_detect_chipset",
+      "expected": "unknown",
+      "pattern_id": "PAT12",
+      "security_sensitive_operation": "pci_get_subsys",
+      "defensive_operation": "pci_dev_put",
+      "source_path": "drivers/cpufreq/cpufreq-nforce2.c",
+      "missing_defenses": [
+        "pci_dev_put(nforce2_dev) before return 0"
+      ],
+      "bug_explanation": "The function calls pci_get_subsys, which increments the reference count of the PCI device. The returned pointer is stored in the global variable nforce2_dev, so the reference escapes the function. However, the function returns 0 on success without releasing the reference via pci_dev_put. Since nforce2_dev is a global, the reference is not leaked immediately, but the function does not properly manage the reference count: it should either release it before returning or ensure the caller will release it. The pattern expects pci_dev_put on the success path if the reference is not passed to a caller that takes ownership. Here, the reference is stored globally, but the function does not release it, leading to a reference leak on each call (if called multiple times) and inconsistent reference counting."
     },
     {
       "case_id": "P13",
       "buggy_function": "mptspi_write_spi_device_pg1",
+      "expected": "bug",
       "pattern_id": "PAT13",
       "security_sensitive_operation": "scsi_device_lookup_by_target",
       "defensive_operation": "scsi_device_put",
+      "source_path": "drivers/message/fusion/mptspi.c",
+      "missing_defenses": [
+        "scsi_device_put(sdev) after scsi_device_lookup_by_target"
+      ],
+      "bug_explanation": "The function calls scsi_device_lookup_by_target() which increments the reference count of the scsi_device. However, after using sdev, the function does not call scsi_device_put() to release the reference. This can lead to a reference leak, preventing the device from being properly freed. The sdev variable is local and does not escape the function, so the missing scsi_device_put() is a bug."
+    },
+    {
+      "case_id": "PAT13-R02",
+      "buggy_function": "ahd_dump_target_state",
+      "expected": "unknown",
+      "pattern_id": "PAT13",
+      "security_sensitive_operation": "scsi_device_lookup_by_target",
+      "defensive_operation": "scsi_device_put",
+      "source_path": "drivers/scsi/aic7xxx/aic79xx_proc.c",
       "missing_defenses": [
         "scsi_device_put"
       ],
-      "bug_explanation": "The function calls scsi_device_lookup_by_target() which increments the reference count of the returned scsi_device. However, after using the device (checking type and printing), the function does not call scsi_device_put() to decrement the reference count. This causes a reference leak. The resource (sdev) remains local and does not escape the function, so the missing release is a bug."
+      "bug_explanation": "The function calls scsi_device_lookup_by_target which returns a reference to a scsi_device. The reference is used but never released via scsi_device_put. This causes a reference leak on every iteration of the loop where a device is found."
+    },
+    {
+      "case_id": "PAT13-R03",
+      "buggy_function": "ahc_dump_target_state",
+      "expected": "unknown",
+      "pattern_id": "PAT13",
+      "security_sensitive_operation": "scsi_device_lookup_by_target",
+      "defensive_operation": "scsi_device_put",
+      "source_path": "drivers/scsi/aic7xxx/aic7xxx_proc.c",
+      "missing_defenses": [
+        "scsi_device_put after scsi_device_lookup_by_target"
+      ],
+      "bug_explanation": "The function calls scsi_device_lookup_by_target which returns a pointer with an elevated reference count. The returned sdev is used in ahc_dump_device_state but never released via scsi_device_put. Since sdev remains local and does not escape the function, this leaks a reference on each iteration where sdev is non-NULL."
     },
     {
       "case_id": "P14",
       "buggy_function": "mt798x_phy_calibration",
+      "expected": "bug",
       "pattern_id": "PAT14",
       "security_sensitive_operation": "nvmem_cell_get",
       "defensive_operation": "nvmem_cell_put",
+      "source_path": "drivers/net/phy/mediatek-ge-soc.c",
       "missing_defenses": [
         "nvmem_cell_put on error path after nvmem_cell_read failure"
       ],
-      "bug_explanation": "When nvmem_cell_read fails (IS_ERR(buf) true), the function returns PTR_ERR(buf) without calling nvmem_cell_put(cell). This leaks the nvmem_cell resource acquired earlier. The cell is not released on this error path, and since the cell does not escape (it is local and not returned or stored), the missing put is a real bug."
+      "bug_explanation": "When nvmem_cell_read returns an error (IS_ERR(buf) true), the function returns PTR_ERR(buf) without calling nvmem_cell_put(cell), causing a resource leak. The cell is acquired successfully but not released on this error path."
     },
     {
       "case_id": "P15",
       "buggy_function": "loongson_card_parse_acpi",
+      "expected": "bug",
       "pattern_id": "PAT15",
       "security_sensitive_operation": "acpi_get_first_physical_node",
       "defensive_operation": "put_device",
+      "source_path": "sound/soc/loongson/loongson_card.c",
       "missing_defenses": [
-        "put_device(phy_dev) on error path when phy_dev is non-NULL"
+        "put_device(phy_dev) on error path or before return"
       ],
-      "bug_explanation": "The function calls acpi_get_first_physical_node(adev) which returns a device pointer with a reference count that must be decremented via put_device. The pointer phy_dev is used locally and never returned or stored externally, so the reference must be released before the function returns. However, on the success path, phy_dev is used but never released. Additionally, on the error path after the second acpi_node_get_property_reference fails, the function returns without calling put_device(phy_dev). This results in a reference leak."
+      "bug_explanation": "The function calls acpi_get_first_physical_node(adev) which returns a device pointer with a reference taken. The returned phy_dev is used locally (its name is assigned to platform names) and then the function returns without calling put_device(phy_dev). This leaks the reference. The variable phy_dev does not escape the function (it is not returned, stored in caller-provided struct, or passed to a framework that takes ownership), so the missing put_device is a bug."
+    },
+    {
+      "case_id": "PAT15-R02",
+      "buggy_function": "st_es8336_late_probe",
+      "expected": "unknown",
+      "pattern_id": "PAT15",
+      "security_sensitive_operation": "acpi_get_first_physical_node",
+      "defensive_operation": "put_device",
+      "source_path": "sound/soc/amd/acp-es8336.c",
+      "missing_defenses": [
+        "put_device on error path after devm_acpi_dev_add_driver_gpios fails"
+      ],
+      "bug_explanation": "The function acquires a reference to codec_dev via acpi_get_first_physical_node, which increments the reference count. On the error path where devm_acpi_dev_add_driver_gpios fails (ret != 0), the function logs a warning but does not call put_device(codec_dev) before returning. This leaks the device reference. The put_device is correctly called on the gpiod_get_optional error path, but missing on the devm_acpi_dev_add_driver_gpios error path."
     },
     {
       "case_id": "P16",
       "buggy_function": "mtk_vcodec_fw_scp_init",
+      "expected": "bug",
       "pattern_id": "PAT16",
       "security_sensitive_operation": "scp_get",
       "defensive_operation": "scp_put",
+      "source_path": "drivers/media/platform/mediatek/vcodec/common/mtk_vcodec_fw_scp.c",
       "missing_defenses": [
         "scp_put on allocation failure path"
       ],
-      "bug_explanation": "The function acquires a reference via scp_get() and stores it in fw->scp. On the devm_kzalloc failure path, the function returns ERR_PTR(-ENOMEM) without calling scp_put(), causing a resource leak. The resource does not escape because the function returns an error pointer, so the caller does not receive the valid fw pointer and cannot release the scp reference."
+      "bug_explanation": "After scp_get succeeds, if devm_kzalloc fails, the function returns ERR_PTR(-ENOMEM) without calling scp_put, leaking the SCP reference."
     },
     {
       "case_id": "P17",
       "buggy_function": "fsl_re_chan_probe",
+      "expected": "bug",
       "pattern_id": "PAT17",
       "security_sensitive_operation": "of_platform_device_create",
       "defensive_operation": "platform_device_put",
+      "source_path": "drivers/dma/fsl_raid.c",
       "missing_defenses": [
-        "platform_device_put on chan_ofdev on error paths"
+        "platform_device_put on chan_ofdev when error occurs after creation"
       ],
-      "bug_explanation": "The function calls of_platform_device_create which returns a platform_device that must be released via platform_device_put on error paths. However, on all error paths (err_free and err_free_1), the function returns without calling platform_device_put on chan_ofdev. The variable chan_ofdev is stored in a local variable and does not escape the function (it is used only to get chandev and set drvdata, but ownership remains with the caller? Actually, the device is created and registered, but the function does not return it or store it in a globally accessible location that would transfer ownership; it only stores a pointer to its embedded device in chan->dev, but that does not transfer ownership of the platform_device itself. Therefore, on error, the platform_device should be released. The missing platform_device_put on error paths is a resource leak bug."
+      "bug_explanation": "The function calls of_platform_device_create which returns a platform_device that must be released via platform_device_put on error paths. However, on all error paths after successful creation (e.g., when of_property_read_u32 fails, irq_of_parse_and_map fails, request_irq fails, or dma_pool_alloc fails), the code jumps to err_free which only returns the error code without calling platform_device_put. This leaks the platform device reference. The resource escapes only if the function succeeds (chan_ofdev is stored indirectly via dev_set_drvdata on chandev), but on error paths it remains local and must be freed."
+    },
+    {
+      "case_id": "PAT17-R06",
+      "buggy_function": "q6v5_probe",
+      "expected": "unknown",
+      "pattern_id": "PAT17",
+      "security_sensitive_operation": "of_platform_device_create",
+      "defensive_operation": "platform_device_put",
+      "source_path": "drivers/remoteproc/qcom_q6v5_mss.c",
+      "missing_defenses": [
+        "platform_device_put on error path after of_platform_device_create"
+      ],
+      "bug_explanation": "The function calls of_platform_device_create to create a platform device for the 'qcom,bam-dmux' node. If any subsequent operation fails (e.g., rproc_add), the function jumps to error labels that do not release the created device via platform_device_put. This results in a resource leak. The device is stored in qproc->bam_dmux, which is a local field of the driver data, but it does not escape the function in a way that transfers ownership (it is not returned, passed to a framework that takes ownership, or stored in a caller-provided structure). Therefore, the function is responsible for cleanup on error paths."
+    },
+    {
+      "case_id": "PAT17-R08",
+      "buggy_function": "thermostat_create_files",
+      "expected": "unknown",
+      "pattern_id": "PAT17",
+      "security_sensitive_operation": "of_platform_device_create",
+      "defensive_operation": "platform_device_put",
+      "source_path": "drivers/macintosh/therm_adt746x.c",
+      "missing_defenses": [
+        "platform_device_put on error path"
+      ],
+      "bug_explanation": "The function calls of_platform_device_create, which returns a platform_device that must be released via platform_device_put. The device is stored in th->pdev, which escapes the function (it is stored in a caller-provided struct), so missing local release on success is not a bug. However, if of_platform_device_create succeeds but subsequent device_create_file calls fail, the function prints a warning but does not call platform_device_put to release the device. This leaks the platform_device on error paths."
     },
     {
       "case_id": "P18",
       "buggy_function": "oaktrail_lvds_init",
+      "expected": "bug",
       "pattern_id": "PAT18",
       "security_sensitive_operation": "i2c_get_adapter",
       "defensive_operation": "i2c_put_adapter",
+      "source_path": "drivers/gpu/drm/gma500/oaktrail_lvds.c",
       "missing_defenses": [
-        "i2c_put_adapter on error path when i2c_adap acquired via i2c_get_adapter"
+        "i2c_put_adapter missing on error paths and after use"
       ],
-      "bug_explanation": "The function calls i2c_get_adapter() to acquire an i2c_adapter. If the adapter is acquired (non-NULL) and later an error occurs (e.g., no EDID and no panel mode), the function jumps to err_unlock which does not call i2c_put_adapter() to release the adapter. This leaks the adapter reference. The adapter is stored in connector->ddc, but on error paths that destroy the connector (e.g., err_unlock calls gma_i2c_destroy on connector->ddc), the adapter obtained via i2c_get_adapter is not put, and the reference is lost. The missing i2c_put_adapter on the error path is a real bug."
+      "bug_explanation": "The function calls i2c_get_adapter() to obtain an i2c_adapter, but never calls i2c_put_adapter() to release it. The adapter is stored in connector->ddc, which escapes the function (it is assigned to a connector that is registered with the DRM framework). However, the reference obtained via i2c_get_adapter() is not transferred to the connector; the connector's ddc field is just a pointer. The i2c core expects each get to be paired with a put. On all paths (including the out: and error paths), i2c_put_adapter() is missing, causing a reference leak."
+    },
+    {
+      "case_id": "PAT18-R02",
+      "buggy_function": "iss_register_subdev_group",
+      "expected": "unknown",
+      "pattern_id": "PAT18",
+      "security_sensitive_operation": "i2c_get_adapter",
+      "defensive_operation": "i2c_put_adapter",
+      "source_path": "drivers/staging/media/omap4iss/iss.c",
+      "missing_defenses": [
+        "i2c_put_adapter on error path or after use"
+      ],
+      "bug_explanation": "The function calls i2c_get_adapter to obtain an adapter reference but never calls i2c_put_adapter to release it. The adapter is used only locally within the loop and does not escape the function (it is not returned, stored in a caller-provided struct, or passed to a framework that takes ownership). This results in a reference leak on every iteration of the loop, regardless of success or failure of v4l2_i2c_new_subdev_board."
+    },
+    {
+      "case_id": "PAT18-R07",
+      "buggy_function": "oaktrail_hdmi_get_modes",
+      "expected": "unknown",
+      "pattern_id": "PAT18",
+      "security_sensitive_operation": "i2c_get_adapter",
+      "defensive_operation": "i2c_put_adapter",
+      "source_path": "drivers/gpu/drm/gma500/oaktrail_hdmi.c",
+      "missing_defenses": [
+        "i2c_put_adapter"
+      ],
+      "bug_explanation": "The function calls i2c_get_adapter(3) to acquire an I2C adapter, but never calls i2c_put_adapter to release it. The adapter is used only locally (not returned or stored externally), so it must be released before the function returns. This results in a resource leak."
+    },
+    {
+      "case_id": "PAT18-R08",
+      "buggy_function": "timbradio_probe",
+      "expected": "unknown",
+      "pattern_id": "PAT18",
+      "security_sensitive_operation": "i2c_get_adapter",
+      "defensive_operation": "i2c_put_adapter",
+      "source_path": "drivers/media/radio/radio-timb.c",
+      "missing_defenses": [
+        "i2c_put_adapter on error path after i2c_get_adapter"
+      ],
+      "bug_explanation": "The function calls i2c_get_adapter twice (for tuner and dsp subdevices) but never calls i2c_put_adapter on any error path or on success. The i2c adapters are not stored in a way that escapes the function (they are passed to v4l2_i2c_new_subdev_board which does not take ownership of the adapter reference), so they must be released. Missing i2c_put_adapter leads to a reference leak on both success and error paths."
+    },
+    {
+      "case_id": "PAT18-R09",
+      "buggy_function": "sta2x11_vip_init_one",
+      "expected": "unknown",
+      "pattern_id": "PAT18",
+      "security_sensitive_operation": "i2c_get_adapter",
+      "defensive_operation": "i2c_put_adapter",
+      "source_path": "drivers/media/pci/sta2x11/sta2x11_vip.c",
+      "missing_defenses": [
+        "i2c_put_adapter on error path after i2c_get_adapter success"
+      ],
+      "bug_explanation": "i2c_get_adapter is called and succeeds, but on the error path labeled 'vunreg' (when v4l2_i2c_new_subdev fails), i2c_put_adapter is not called before returning. This leaks the I2C adapter reference. The function does call i2c_put_adapter after the subdev is successfully created, but the error path is missing the cleanup."
     },
     {
       "case_id": "P19",
       "buggy_function": "agp_serverworks_probe",
+      "expected": "bug",
       "pattern_id": "PAT19",
       "security_sensitive_operation": "pci_get_domain_bus_and_slot",
       "defensive_operation": "pci_dev_put",
+      "source_path": "drivers/char/agp/sworks-agp.c",
       "missing_defenses": [
-        "pci_dev_put on error path after pci_get_domain_bus_and_slot succeeds"
+        "pci_dev_put(bridge_dev) before early returns after pci_get_domain_bus_and_slot success"
       ],
-      "bug_explanation": "The function calls pci_get_domain_bus_and_slot, which increments the reference count of the returned pci_dev. The returned device is stored in serverworks_private.svrwrks_dev, which is a global/static structure, so the reference escapes the function. However, on subsequent error paths (e.g., when returning -ENODEV after checking aperture or MMIO addresses, or when agp_alloc_bridge fails), the function does not call pci_dev_put to release the reference. Since the reference is not released on these error paths, it results in a reference leak. The only proper cleanup occurs if the function succeeds and agp_add_bridge is called, but error paths must also release the reference."
+      "bug_explanation": "The function calls pci_get_domain_bus_and_slot, which increments the reference count of the returned pci_dev. The acquired bridge_dev is stored in a global structure (serverworks_private.svrwrks_dev) and thus escapes the function. However, on several error paths after successful acquisition (e.g., when returning -ENODEV due to 64-bit aperture or MMIO address issues), the function returns without calling pci_dev_put. Since the device reference is stored globally, the reference is not leaked immediately, but the error path returns an error without properly cleaning up the global reference. This can lead to a reference count imbalance if the probe fails after storing the reference, as the global pointer remains set but the driver may not be fully initialized. The proper fix would be to release the reference on error paths before returning, or to ensure the global state is consistent."
+    },
+    {
+      "case_id": "PAT19-R01",
+      "buggy_function": "vfio_pci_igd_cfg_init",
+      "expected": "unknown",
+      "pattern_id": "PAT19",
+      "security_sensitive_operation": "pci_get_domain_bus_and_slot",
+      "defensive_operation": "pci_dev_put",
+      "source_path": "drivers/vfio/pci/vfio_pci_igd.c",
+      "missing_defenses": [
+        "pci_dev_put(lpc_bridge) on the error path when pci_get_domain_bus_and_slot for lpc_bridge fails"
+      ],
+      "bug_explanation": "When pci_get_domain_bus_and_slot for lpc_bridge returns NULL, the function returns -ENODEV without releasing host_bridge, which was previously acquired and not released. This causes a reference leak of host_bridge."
+    },
+    {
+      "case_id": "PAT19-R06",
+      "buggy_function": "nouveau_hw_get_clock",
+      "expected": "unknown",
+      "pattern_id": "PAT19",
+      "security_sensitive_operation": "pci_get_domain_bus_and_slot",
+      "defensive_operation": "pci_dev_put",
+      "source_path": "drivers/gpu/drm/nouveau/dispnv04/hw.c",
+      "missing_defenses": [
+        "pci_dev_put"
+      ],
+      "bug_explanation": "The function calls pci_get_domain_bus_and_slot() which returns a PCI device with increased reference count, but never calls pci_dev_put() to release it. This causes a reference leak on every call that enters the affected branches. The returned pci_dev pointer is used only locally (passed to pci_read_config_dword) and does not escape the function, so the missing pci_dev_put is a real bug."
     },
     {
       "case_id": "P20",
       "buggy_function": "am33xx_pm_rtc_setup",
+      "expected": "bug",
       "pattern_id": "PAT20",
       "security_sensitive_operation": "of_find_node_by_name",
       "defensive_operation": "of_node_put",
+      "source_path": "drivers/soc/ti/pm33xx.c",
       "missing_defenses": [
         "of_node_put(np) on all paths after successful of_find_node_by_name"
       ],
-      "bug_explanation": "The function calls of_find_node_by_name(NULL, \"rtc\") which returns a node with a reference count that must be decremented via of_node_put. The node pointer np is used only locally and never escapes the function. However, the function returns without calling of_node_put(np) on any path: the normal return path (return 0) and the error paths (err_iounmap, err_clk_put) all leak the reference. This is a real bug because the reference is not released, causing a resource leak."
+      "bug_explanation": "The function calls of_find_node_by_name(NULL, \"rtc\") to obtain a device node reference, but never calls of_node_put(np) to release it. This occurs on all paths: the normal return path (return 0) and the error paths (err_iounmap, err_clk_put). The node reference is not returned or stored externally; it remains local, so the missing of_node_put causes a reference leak."
+    },
+    {
+      "case_id": "PAT20-R03",
+      "buggy_function": "vio_init",
+      "expected": "unknown",
+      "pattern_id": "PAT20",
+      "security_sensitive_operation": "of_find_node_by_name",
+      "defensive_operation": "of_node_put",
+      "source_path": "arch/sparc/kernel/vio.c",
+      "missing_defenses": [
+        "of_node_put(cdev_node) on error path"
+      ],
+      "bug_explanation": "The function calls of_find_node_by_name(NULL, \"channel-devices\") which returns a node with a reference count that must be decremented via of_node_put. On the error paths labeled out_release, the function releases the mdesc handle but does not call of_node_put(cdev_node). This results in a reference leak of the device node. The node is stored in the global variable cdev_node, but the error paths exit without releasing it, and the function returns an error code, so the reference is leaked."
+    },
+    {
+      "case_id": "PAT20-R06",
+      "buggy_function": "ams_init",
+      "expected": "unknown",
+      "pattern_id": "PAT20",
+      "security_sensitive_operation": "of_find_node_by_name",
+      "defensive_operation": "of_node_put",
+      "source_path": "drivers/macintosh/ams/ams-core.c",
+      "missing_defenses": [
+        "of_node_put on np before returning from ams_i2c_init or ams_pmu_init"
+      ],
+      "bug_explanation": "The function calls of_find_node_by_name, which increments the reference count of the returned device_node. When the node is found and compatible, the function passes np to ams_i2c_init or ams_pmu_init and returns immediately without calling of_node_put. If the callee does not take ownership (i.e., does not call of_node_put itself), this leaks the reference. Additionally, if the node is not found or not compatible, the function returns -ENODEV without releasing np (which is NULL in that case, so no leak). The bug is that on the success paths, np is not released locally, and it is unclear whether the callee assumes ownership. Since the reference pattern requires paired cleanup and the function does not perform it, this is a real bug."
+    },
+    {
+      "case_id": "PAT20-R09",
+      "buggy_function": "valkyriefb_init",
+      "expected": "unknown",
+      "pattern_id": "PAT20",
+      "security_sensitive_operation": "of_find_node_by_name",
+      "defensive_operation": "of_node_put",
+      "source_path": "drivers/video/fbdev/valkyriefb.c",
+      "missing_defenses": [
+        "of_node_put(dp) after of_find_node_by_name(NULL, \"valkyrie\")"
+      ],
+      "bug_explanation": "The function calls of_find_node_by_name(NULL, \"valkyrie\") which returns a device node with an incremented reference count. The node is used only locally (to obtain the address resource) and never escapes the function. However, the function does not call of_node_put(dp) before returning (either on success or on the error paths after the node is used). This results in a reference leak. The node is not returned, stored, or passed to any framework that takes ownership, so the local release is required."
+    },
+    {
+      "case_id": "PAT23-R07",
+      "buggy_function": "bcm53573_ilp_init",
+      "expected": "unknown",
+      "pattern_id": "PAT23",
+      "security_sensitive_operation": "of_get_parent",
+      "defensive_operation": "of_node_put",
+      "source_path": "drivers/clk/bcm/clk-bcm53573-ilp.c",
+      "missing_defenses": [
+        "of_node_put on the parent node obtained via of_get_parent"
+      ],
+      "bug_explanation": "The function calls of_get_parent(np) to obtain a device node, but never calls of_node_put on it. This leaks a reference to the parent node. The node is used only to obtain a regmap via syscon_node_to_regmap, which does not take ownership of the node reference. The node reference remains owned by the caller and must be released before the function returns. The error path at 'err_free_ilp' does not release the node, and the success path also does not release it. This is a reference leak bug."
+    },
+    {
+      "case_id": "PAT26-R10",
+      "buggy_function": "page_alloc_init_late",
+      "expected": "unknown",
+      "pattern_id": "PAT26",
+      "security_sensitive_operation": "kthread_run",
+      "defensive_operation": "err-ptr-check",
+      "source_path": "mm/mm_init.c",
+      "missing_defenses": [
+        "IS_ERR check on kthread_run return value"
+      ],
+      "bug_explanation": "The function calls kthread_run in a loop but never checks the return value with IS_ERR. If kthread_run fails (e.g., due to memory pressure), it returns an error pointer. The thread is not stored or used later, so the missing check does not lead to use of an invalid pointer, but the failure is silently ignored. This could result in fewer threads than expected, potentially causing incomplete initialization or hangs in wait_for_completion. The defensive pattern requires an error-pointer check before using the returned task pointer, and here the return value is completely discarded without any error handling."
     }
-  ]
+  ],
+  "detected_bug_reports": 20
 }

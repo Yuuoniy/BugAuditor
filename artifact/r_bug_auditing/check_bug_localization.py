@@ -2,6 +2,7 @@
 import argparse
 import csv
 import json
+import tempfile
 import re
 import subprocess
 import sys
@@ -61,10 +62,40 @@ def query_for_call(call_name: str) -> str:
     return f"_ $func(_){{{call_name}(_);}}"
 
 
-def _extract_definition_name(signature: str) -> str:
-    signature = re.sub(r"/\*.*?\*/", " ", signature, flags=re.S)
-    signature = re.sub(r"//.*", " ", signature)
-    before_brace = signature.split("{", 1)[0]
+def parse_weggli_matches(data: object) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    if not isinstance(data, list):
+        return rows
+    for file_set in data:
+        if not isinstance(file_set, list):
+            continue
+        for file_entry in file_set:
+            if not isinstance(file_entry, dict):
+                continue
+            file_path = str(file_entry.get("path") or "")
+            for match_group in file_entry.get("matches", []):
+                if not isinstance(match_group, dict):
+                    continue
+                func_name = ""
+                for match in match_group.get("vars", []):
+                    if isinstance(match, dict) and match.get("var") == "$func":
+                        func_name = str(match.get("val") or "")
+                        break
+                if func_name:
+                    rows.append(
+                        {
+                            "func_name": func_name,
+                            "path": file_path,
+                            "function": str(match_group.get("function") or ""),
+                        }
+                    )
+    return rows
+
+
+def extract_definition_name(snippet: str) -> str:
+    snippet = re.sub(r"/\*.*?\*/", " ", snippet, flags=re.S)
+    snippet = re.sub(r"//.*", " ", snippet)
+    before_brace = snippet.split("{", 1)[0]
     match = re.search(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\([^;{}]*\)\s*$", before_brace, re.S)
     if not match:
         return ""
@@ -74,81 +105,72 @@ def _extract_definition_name(signature: str) -> str:
     return name
 
 
-def _functions_containing_call(path: Path, call_name: str) -> list[dict[str, str]]:
-    try:
-        lines = path.read_text(errors="ignore").splitlines()
-    except Exception:
-        return []
+def parse_weggli_text(text: str) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    current_path = ""
+    current_lines: list[str] = []
+    path_re = re.compile(r"^(.+):\d+$")
 
-    call_re = re.compile(r"\b" + re.escape(call_name) + r"\s*\(")
-    rows: dict[str, dict[str, str]] = {}
-    pending: list[str] = []
-    current_func = ""
-    brace_depth = 0
+    def flush() -> None:
+        if not current_path or not current_lines:
+            return
+        snippet = "\n".join(current_lines).strip()
+        func_name = extract_definition_name(snippet)
+        if func_name:
+            rows.append({"func_name": func_name, "path": current_path, "function": snippet})
 
-    for line in lines:
-        stripped = line.strip()
-        if brace_depth == 0:
-            if stripped and not stripped.startswith("#"):
-                pending.append(line)
-                pending = pending[-8:]
-            if "{" in line:
-                current_func = _extract_definition_name("\n".join(pending))
-                brace_depth += line.count("{") - line.count("}")
-                pending = []
-                if brace_depth <= 0:
-                    current_func = ""
-                    brace_depth = 0
-                continue
-            if stripped.endswith(";"):
-                pending = []
+    for line in text.splitlines():
+        match = path_re.match(line)
+        if match and Path(match.group(1)).suffix in {".c", ".h"}:
+            flush()
+            current_path = match.group(1)
+            current_lines = []
             continue
-
-        if current_func and call_re.search(line):
-            rows[current_func] = {"func_name": current_func, "path": str(path)}
-        brace_depth += line.count("{") - line.count("}")
-        if brace_depth <= 0:
-            current_func = ""
-            brace_depth = 0
-
-    return list(rows.values())
+        if current_path:
+            current_lines.append(line)
+    flush()
+    return rows
 
 
 def find_calling_functions(source_dir: Path, call_name: str) -> list[dict[str, str]]:
     if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", call_name or ""):
         return []
 
-    query = r"\b" + re.escape(call_name) + r"\s*\("
-    proc = subprocess.run(
-        [
-            "rg",
-            "-l",
-            query,
-            str(source_dir),
-            "-g",
-            "*.c",
-            "-g",
-            "*.h",
-            "-g",
-            "!tools/verification/**",
-            "-g",
-            "!tools/testing/**",
-            "-g",
-            "!.git/**",
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if proc.returncode not in (0, 1):
-        return []
+    cfg = load_config()
+    query = query_for_call(call_name)
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+    try:
+        cmd = [cfg["weggli_path"], query, str(source_dir), "-l", "-s", str(tmp_path)]
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode == 0:
+            data = json.loads(tmp_path.read_text(encoding="utf-8"))
+            rows = parse_weggli_matches(data)
+        elif "Found argument '-s'" in proc.stderr or "wasn't expected" in proc.stderr:
+            fallback = subprocess.run(
+                [cfg["weggli_path"], query, str(source_dir), "-l"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if fallback.returncode != 0:
+                message = fallback.stderr.strip() or f"Weggli failed with exit code {fallback.returncode}"
+                raise RuntimeError(message)
+            rows = parse_weggli_text(fallback.stdout)
+        else:
+            message = proc.stderr.strip() or f"Weggli failed with exit code {proc.returncode}"
+            raise RuntimeError(message)
+    finally:
+        tmp_path.unlink(missing_ok=True)
 
     found: dict[str, dict[str, str]] = {}
-    for raw_path in proc.stdout.splitlines():
-        path = Path(raw_path)
-        for row in _functions_containing_call(path, call_name):
-            found.setdefault(row["func_name"], row)
-
+    for row in rows:
+        found.setdefault(row["func_name"], row)
     return sorted(found.values(), key=lambda row: (row["path"], row["func_name"]))
 
 
@@ -215,7 +237,7 @@ def main() -> None:
     positives = [row for row in cases if row["expected"] == "bug"]
     summary = {
         "cases": len(cases),
-        "known_bug_cases": len(positives),
+        "detected_bug_cases": len(positives),
         "candidate_present_cases": sum(1 for row in probe_rows if row["candidate_present"] == "yes"),
         "unique_patterns": len({row["pattern_id"] for row in cases}),
         "unique_security_sensitive_operations": len({patterns[row["pattern_id"]]["security_sensitive_operation"] for row in cases}),

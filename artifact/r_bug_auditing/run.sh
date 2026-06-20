@@ -18,6 +18,15 @@ fi
 PER_PATTERN_AUDIT_LIMIT="${1:-10}"
 MIN_PER_PATTERN_AUDIT_LIMIT=10
 WORKERS="${2:-8}"
+SOURCE_OVERRIDE="${BUGAUDITOR_LINUX_SOURCE_DIR:-${BUGAUDITOR_SOURCE_DIR:-}}"
+TEMP_CONFIG=""
+
+cleanup() {
+  if [[ -n "${TEMP_CONFIG}" && -f "${TEMP_CONFIG}" ]]; then
+    rm -f "${TEMP_CONFIG}"
+  fi
+}
+trap cleanup EXIT
 
 if [[ "${PER_PATTERN_AUDIT_LIMIT}" -lt "${MIN_PER_PATTERN_AUDIT_LIMIT}" ]]; then
   echo "[ae] per-pattern audit limit must be at least ${MIN_PER_PATTERN_AUDIT_LIMIT}" >&2
@@ -25,8 +34,11 @@ if [[ "${PER_PATTERN_AUDIT_LIMIT}" -lt "${MIN_PER_PATTERN_AUDIT_LIMIT}" ]]; then
 fi
 
 rm -f \
+  "${RESULT_DIR}/"*bugs.csv \
+  "${RESULT_DIR}/"*bug_reports.json \
+  "${RESULT_DIR}/"*bug_overlap.csv \
   "${RESULT_DIR}/bug_detection_cases.csv" \
-  "${RESULT_DIR}/confirmed_bugs.csv" \
+  "${RESULT_DIR}/detected_bugs.csv" \
   "${RESULT_DIR}/defensive_patterns.csv" \
   "${RESULT_DIR}/bug_localization_probe.tsv" \
   "${RESULT_DIR}/bug_localization_probe_summary.json" \
@@ -36,7 +48,14 @@ rm -f \
   "${RESULT_DIR}/exact_audit_results.json" \
   "${RESULT_DIR}/llm_run_summary.csv" \
   "${RESULT_DIR}/llm_run_summary.md" \
+  "${RESULT_DIR}/bug_auditing_results.csv" \
   "${RESULT_DIR}/bug_auditing_results.json" \
+  "${RESULT_DIR}/bug_reports.json" \
+  "${RESULT_DIR}/detected_bug_reports.json" \
+  "${RESULT_DIR}/bug_auditing_summary.json" \
+  "${RESULT_DIR}/bug_auditing_summary.md" \
+  "${RESULT_DIR}/detected_bug_overlap.csv" \
+  "${RESULT_DIR}/expected_output.txt" \
   "${RESULT_DIR}/reduced_bug_auditing_cases.csv" \
   "${RESULT_DIR}/reduced_bug_auditing_summary.csv" \
   "${RESULT_DIR}/reduced_bug_auditing_summary.md" \
@@ -47,34 +66,67 @@ rm -f \
   "${RESULT_DIR}/selected_bug_detection_cases.csv"
 rm -rf "${RESULT_DIR}/patterns"
 
-for name in \
-  bug_auditing_results.csv \
-  bug_reports.json \
-  bug_auditing_summary.json \
-  bug_auditing_summary.md \
-  audit_candidate_plan.csv \
-  expected_output.txt
-do
-  ae_copy_reference "${REFERENCE_DIR}/${name}" "${RESULT_DIR}"
-done
-
-echo "[ae] per-pattern audit limit: ${PER_PATTERN_AUDIT_LIMIT} comparable functions (confirmed bugs always included)"
+echo "[ae] per-pattern audit limit: ${PER_PATTERN_AUDIT_LIMIT} comparable functions (detected bug cases always included)"
 echo "[ae] pattern input: ${REFERENCE_DIR}/defensive_patterns.csv"
 echo "[ae] pattern files: ${REFERENCE_DIR}/patterns/"
+if [[ -n "${SOURCE_OVERRIDE}" ]]; then
+  echo "[ae] linux source override: ${SOURCE_OVERRIDE}"
+fi
 
-if [[ "${USE_REFERENCE}" == "0" ]]; then
+if [[ "${USE_REFERENCE}" == "1" ]]; then
+  for name in \
+    bug_auditing_results.csv \
+    bug_reports.json \
+    detected_bug_reports.json \
+    bug_auditing_summary.json \
+    bug_auditing_summary.md \
+    detected_bug_overlap.csv \
+    audit_candidate_plan.csv \
+    expected_output.txt
+  do
+    ae_copy_reference "${REFERENCE_DIR}/${name}" "${RESULT_DIR}"
+  done
+else
   ae_need_config "${REPO_ROOT}"
   ae_need_tool_path "${REPO_ROOT}" "weggli_path" "Weggli"
-  ae_need_source_path "${REPO_ROOT}" "linux"
+  if [[ -n "${SOURCE_OVERRIDE}" ]]; then
+    if [[ ! -d "${SOURCE_OVERRIDE}" ]]; then
+      echo "[ae] linux source override does not exist: ${SOURCE_OVERRIDE}" >&2
+      exit 1
+    fi
+    TEMP_CONFIG="$(mktemp "${TMPDIR:-/tmp}/bugauditor-r-bug-auditing.XXXXXX.json")"
+    python3 - "${BUGAUDITOR_CONFIG:-${REPO_ROOT}/config.json}" "${TEMP_CONFIG}" "${SOURCE_OVERRIDE}" <<'PY'
+import json
+import sys
+
+src_config, dst_config, source_dir = sys.argv[1:]
+with open(src_config, "r", encoding="utf-8") as f:
+    config = json.load(f)
+config.setdefault("program_paths", {})
+config["program_paths"]["linux"] = source_dir
+with open(dst_config, "w", encoding="utf-8") as f:
+    json.dump(config, f, indent=2)
+    f.write("\n")
+PY
+    export BUGAUDITOR_CONFIG="${TEMP_CONFIG}"
+  else
+    ae_need_source_path "${REPO_ROOT}" "linux"
+  fi
   ae_need_llm_config "${REPO_ROOT}"
   cd "${REPO_ROOT}"
 
+  SOURCE_ARG=()
+  if [[ -n "${SOURCE_OVERRIDE}" ]]; then
+    SOURCE_ARG=(--source-dir "${SOURCE_OVERRIDE}")
+  fi
+
   python artifact/r_bug_auditing/build_audit_candidates.py \
     --patterns "${REFERENCE_DIR}/defensive_patterns.csv" \
-    --confirmed-bugs "${REFERENCE_DIR}/confirmed_bugs.csv" \
+    --detected-bugs "${REFERENCE_DIR}/detected_bugs.csv" \
     --output-csv "${RESULT_DIR}/audit_candidate_plan.csv" \
     --per-pattern-limit "${PER_PATTERN_AUDIT_LIMIT}" \
-    --repo linux
+    --repo linux \
+    "${SOURCE_ARG[@]}"
 
   python artifact/r_bug_auditing/audit_cases.py \
     --cases "${RESULT_DIR}/audit_candidate_plan.csv" \
@@ -82,6 +134,7 @@ if [[ "${USE_REFERENCE}" == "0" ]]; then
     --output-csv "${RESULT_DIR}/bug_auditing_results.csv" \
     --patterns "${REFERENCE_DIR}/defensive_patterns.csv" \
     --repo linux \
+    "${SOURCE_ARG[@]}" \
     --workers "${WORKERS}"
 fi
 
@@ -116,6 +169,9 @@ workers = sys.argv[6]
 rows = json.loads(json_path.read_text(encoding="utf-8"))
 positive_cases = sum(1 for r in rows if r["case"].get("expected") == "bug")
 random_comparable = sum(1 for r in rows if r["case"].get("expected") == "unknown")
+completed = sum(1 for r in rows if r["audit"].get("verdict") not in ("error", "source_not_found"))
+llm_errors = sum(1 for r in rows if r["audit"].get("verdict") == "error" or r["audit"].get("error"))
+source_missing = sum(1 for r in rows if r["audit"].get("verdict") == "source_not_found")
 matched = sum(1 for r in rows if r["matches_expected"] is True)
 labeled = sum(1 for r in rows if r["matches_expected"] is not None)
 positive_detections = sum(
@@ -150,13 +206,16 @@ metrics = [
     ("workers", workers),
     ("elapsed_seconds", elapsed),
     ("cases", len(rows)),
+    ("completed_audit_candidates", completed),
+    ("llm_error_records", llm_errors),
+    ("source_not_found_records", source_missing),
     ("labeled_cases", labeled),
     ("matched_expected", matched),
-    ("known_bug_cases", positive_cases),
+    ("detected_bug_cases", positive_cases),
     ("random_comparable_candidates", random_comparable),
-    ("known_bug_detections", positive_detections),
+    ("detected_bug_reports", positive_detections),
     ("random_comparable_detections", random_detections),
-    ("known_bug_recall", f"{positive_detections}/{positive_cases}"),
+    ("detected_bug_recall", f"{positive_detections}/{positive_cases}"),
     ("prompt_tokens", prompt_tokens),
     ("completion_tokens", completion_tokens),
     ("total_tokens", total_tokens),
@@ -171,13 +230,17 @@ with csv_path.open("w", newline="", encoding="utf-8") as f:
 md_path.write_text(
     "\n".join(
         [
-            "# Reproduced Bug Detection LLM Run",
+            "# Reproduced Bug Auditing LLM Run",
             "",
             f"Command setting: per-pattern audit limit `{per_pattern_limit}`, workers `{workers}`.",
             "",
             (
-                f"Known-bug recall: `{positive_detections}/{positive_cases}`. "
+                f"Detected-bug recall: `{positive_detections}/{positive_cases}`. "
                 f"Random comparable candidates flagged: `{random_detections}/{random_comparable}`."
+            ),
+            (
+                f"Completed audit candidates: `{completed}/{len(rows)}`. "
+                f"LLM errors: `{llm_errors}`; missing source records: `{source_missing}`."
             ),
             "",
             (
@@ -199,7 +262,8 @@ PY
     --audit-json "${RESULT_DIR}/exact_audit_results.json" \
     --llm-summary "${RESULT_DIR}/llm_run_summary.csv" \
     --output-dir "${RESULT_DIR}" \
-    --repo linux
+    --repo linux \
+    "${SOURCE_ARG[@]}"
 fi
 
 ae_show_file "${RESULT_DIR}/expected_output.txt" 20
