@@ -1,7 +1,6 @@
 FROM ubuntu:22.04
 
-ARG OH_MY_ZSH_COMMIT=887a864aba396c0e6dcf7c0254f455676f830daa
-ARG TMUX_CONF_COMMIT=af33f07134b76134acca9d01eacbdecca9c9cda6
+
 ARG WEGGLI_COMMIT=bf6453b03517a3ca3eec23e3be9f12cf60c0c614
 ARG JOERN_VERSION=v1.1.763
 
@@ -14,6 +13,10 @@ ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
 ENV SHELL=/bin/zsh
 ENV ZSH=/root/.oh-my-zsh
+
+# set up the proxy for building in restricted networks.
+# ENV http_proxy=http://127.0.0.1:xxxx
+# ENV https_proxy=http://127.0.0.1:xxxx
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
@@ -37,7 +40,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     locales \
     openjdk-11-jdk \
+    ripgrep \
     rustc \
+    sudo \
     tk-dev \
     tmux \
     unzip \
@@ -74,20 +79,7 @@ RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
 # ENV http_proxy=http://XX.XX.XX.XX:XX
 # ENV https_proxy=http://XX.XX.XX.XX:XX
 
-RUN git clone https://github.com/robbyrussell/oh-my-zsh.git /tmp/oh-my-zsh && \
-    cd /tmp/oh-my-zsh && \
-    git checkout "${OH_MY_ZSH_COMMIT}" && \
-    cp -r /tmp/oh-my-zsh /root/.oh-my-zsh && \
-    cp /root/.oh-my-zsh/templates/zshrc.zsh-template /root/.zshrc && \
-    sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="ys"/g' /root/.zshrc && \
-    chsh -s /bin/zsh root && \
-    rm -rf /tmp/oh-my-zsh
-
-RUN git clone https://github.com/gpakosz/.tmux.git /root/.tmux && \
-    cd /root/.tmux && \
-    git checkout "${TMUX_CONF_COMMIT}" && \
-    ln -s -f /root/.tmux/.tmux.conf /root/.tmux.conf && \
-    cp /root/.tmux/.tmux.conf.local /root/.tmux.conf.local
+RUN chsh -s /bin/zsh root
 
 WORKDIR /root/tools
 RUN git clone https://github.com/Yuuoniy/weggli.git && \

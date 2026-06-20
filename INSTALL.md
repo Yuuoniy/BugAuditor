@@ -15,8 +15,8 @@ The image provides the required analysis tools, including Weggli, tree-sitter-c,
 
 ```bash
 mkdir -p source
-curl -L https://www.kernel.org/pub/linux/kernel/v6.x/testing/linux-6.10-rc4.tar.xz -o /tmp/linux-6.10-rc4.tar.xz
-tar -xf /tmp/linux-6.10-rc4.tar.xz -C source
+curl -L https://github.com/torvalds/linux/archive/refs/tags/v6.10-rc4.tar.gz -o /tmp/linux-v6.10-rc4.tar.gz
+tar -xzf /tmp/linux-v6.10-rc4.tar.gz -C source
 mv source/linux-6.10-rc4 source/linux
 ```
 
