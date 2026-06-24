@@ -5,6 +5,11 @@ __pycache__/
 .vscode/
 
 artifact/results/
+artifact/cross_project/reference/cross_project_operations.csv
+artifact/cross_project/reference/deepseek_rerun_summary.md
+artifact/cross_project/reference/table16_expected.csv
+artifact/cross_project/reference/table16_openssl_ffmpeg_stats.tex
+artifact/cross_project/reference/top_pattern_evidence_sample.csv
 artifact/r_bug_auditing/reference/table21_cases.csv
 output/
 logs/

@@ -97,7 +97,7 @@ ae_need_source_path() {
   fi
   if [[ ! -d "${path_value}" ]]; then
     echo "[ae] missing ${repo_key} source at ${path_value}" >&2
-    echo "[ae] Prepare the default source directory from INSTALL.md, or edit config.json:program_paths.${repo_key}." >&2
+    echo "[ae] Prepare the source directory via editing config.json:program_paths.${repo_key}." >&2
     return 1
   fi
 }
