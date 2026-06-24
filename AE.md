@@ -15,7 +15,7 @@ A scaled-down reproduction of the main experiments from the paper, covering two 
 
 
 The full paper-scale experiments are computationally expensive (large-scale AST queries, Joern analysis, and many LLM calls). Therefore, the AE provides reduced-scale versions that preserve the core workflow, data, and results.
-The reduced-scale versions keep the overall LLM costs very low (a few dollars).
+The reduced-scale versions keep LLM costs very low. Using a model such as DeepSeek-V4-Flash can bring the total cost to less than one dollar.
 
 We also provide additional extension experiments (defensive operation extensibility and cross-project generalizability on OpenSSL/FFmpeg). These demonstrate broader capabilities of BugAuditor but are not required for the core artifact evaluation.
 
@@ -29,6 +29,8 @@ We also provide additional extension experiments (defensive operation extensibil
   - [Reproduced Reduced-Scale Evaluation](#reproduced-reduced-scale-evaluation)
     - [Defensive Pattern Reasoning](#defensive-pattern-reasoning)
     - [Bug Auditing](#bug-auditing)
+  - [Extension Experiments](#extension-experiments)
+    - [1. Extensibility analysis.](#1-extensibility-analysis)
     - [2. Generalizability Study](#2-generalizability-study)
   - [Data for Paper Tables and Figures](#data-for-paper-tables-and-figures)
 
@@ -248,7 +250,6 @@ Example report:
 ```
 
 **Execution time.** The packaged reference live run took about 185 seconds and used about 0.33M tokens.
-```
 
 
 **Execution time.** A few mins and token cost.
