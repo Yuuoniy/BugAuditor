@@ -9,7 +9,7 @@ docker build -t bugauditor-ae .
 docker run -it bugauditor-ae
 ```
 
-The image provides the required analysis tools, including Weggli, tree-sitter-c, and Joern.
+For detailed dependency information, please refer to the [Dockerfile](./Dockerfile).
 
 ## Source Code
 
@@ -27,16 +27,11 @@ The artifact supports projects placed under `source/`; update `program_paths` in
 ## LLM endpoint Configuration
 The main configuration file is `config.json`. You need to configure your own LLM endpoint before running the artifact. Edit the following fields according to your provider:
 
-`openai_api_base`: The base URL of your LLM API endpoint
-`openai_api_key`: Your API key
-`openai_model`: The model name (e.g., deepseek-v4-flash, or any compatible model)
-
-Example configuration:
 ```json
 {
-  "openai_api_base": "https://api.deepseek.com",
-  "openai_api_key": "YOUR_KEY",
-  "openai_model": "deepseek-v4-flash"
+  "openai_api_base": "https://api.deepseek.com", //The base URL of your LLM API endpoint
+  "openai_api_key": "YOUR_KEY", // Your API key
+  "openai_model": "deepseek-v4-flash" //The model name (e.g., deepseek-v4-flash, or any compatible model)
 }
 ```
-Note on models: During our artifact evaluation preparation, we used DeepSeek V4 Flash for testing. Its cost is equal to or lower than that of DeepSeek V3.2. The artifact is compatible with other similar models from DeepSeek or other OpenAI-compatible providers.
+Note on models: During our artifact evaluation preparation, we used DeepSeek V4 Flash for testing. Its cost is equal to or lower than that of DeepSeek V3.2. The artifact is compatible with other LLMs via OpenAI-compatible endpoints.
